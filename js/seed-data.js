@@ -1,9 +1,11 @@
 /**
  * 种子数据 - 30+废品品类 + 3个月历史价格
  * 出厂内置参考价，断网也能查
+ * 
+ * 【方案A】支持外部 data/crawler-rules.json 热更新爬虫规则
  */
 
-// 品类定义
+// ==================== 品类定义 ====================
 const CATEGORIES = [
   // === 废纸类 ===
   { id: 'paper_huangban', name: '黄板纸', unit: '元/吨', parent: '废纸', parent_id: 'cat_paper', sort: 1, icon: '📄' },
@@ -48,7 +50,6 @@ const CATEGORIES = [
   { id: 'rubber_hose', name: '废胶管', unit: '元/吨', parent: '废橡胶', parent_id: 'cat_rubber', sort: 51, icon: '🛞' },
 ];
 
-// 父级品类
 const PARENT_CATEGORIES = [
   { id: 'cat_paper', name: '废纸', unit: '', parent_id: null, sort_order: 1, icon: '📄' },
   { id: 'cat_plastic', name: '废塑料', unit: '', parent_id: null, sort_order: 2, icon: '🧴' },
@@ -58,7 +59,7 @@ const PARENT_CATEGORIES = [
   { id: 'cat_rubber', name: '废橡胶', unit: '', parent_id: null, sort_order: 6, icon: '🛞' },
 ];
 
-// 基准价格（参考2024-2025年市场行情）
+// ==================== 基准价格 ====================
 const BASE_PRICES = {
   paper_huangban:    { buy: 1450, sell: 1550, volatility: 0.04 },
   paper_shuzhi:      { buy: 1280, sell: 1380, volatility: 0.035 },
@@ -97,7 +98,7 @@ const BASE_PRICES = {
   rubber_hose:       { buy: 1800, sell: 1950, volatility: 0.05 },
 };
 
-// 地区数据
+// ==================== 地区数据 ====================
 const REGIONS = [
   { id: 'region_default', name: '默认地区', parent_id: null, level: 0 },
   { id: 'region_huadong', name: '华东地区', parent_id: null, level: 1 },
@@ -111,11 +112,11 @@ const REGIONS = [
   { id: 'region_tianjin', name: '天津市', parent_id: 'region_huabei', level: 2 },
 ];
 
-// 生成3个月历史价格数据
+// ==================== 生成3个月历史价格 ====================
 function generateSeedPrices() {
   const prices = [];
   const now = new Date();
-  const days = 90; // 3个月
+  const days = 90;
 
   for (const cat of CATEGORIES) {
     const base = BASE_PRICES[cat.id];
@@ -127,16 +128,13 @@ function generateSeedPrices() {
     for (let d = days; d >= 0; d--) {
       const date = new Date(now);
       date.setDate(date.getDate() - d);
-      // 模拟价格波动
       const change = (Math.random() - 0.48) * base.volatility;
       currentBuy = Math.round(currentBuy * (1 + change));
       currentSell = Math.round(currentSell * (1 + change));
 
-      // 确保买卖价差合理
       const spread = Math.max(Math.round(base.sell - base.buy), 50);
       currentSell = currentBuy + spread + Math.round(Math.random() * spread * 0.3);
 
-      // 确保价格不偏离基准太多
       currentBuy = Math.max(Math.round(base.buy * 0.8), Math.min(Math.round(base.buy * 1.2), currentBuy));
       currentSell = Math.max(Math.round(base.sell * 0.8), Math.min(Math.round(base.sell * 1.2), currentSell));
 
@@ -157,7 +155,7 @@ function generateSeedPrices() {
   return prices;
 }
 
-// 爬虫规则配置
+// ==================== 内置爬虫规则（后备方案） ====================
 const CRAWLER_RULES = {
   version: '1.0.1',
   updated_at: new Date().toISOString(),
@@ -166,104 +164,147 @@ const CRAWLER_RULES = {
       name: '废品之家',
       baseUrl: 'https://www.feipinzhijia.com/hangqing/',
       listSelector: '.price-list li',
-      fields: {
-        category: '.name',
-        price: '.price-value',
-        change: '.change',
-        date: '.date'
-      },
+      fields: { category: '.name', price: '.price-value', change: '.change', date: '.date' },
       intervalMinutes: 120,
       enabled: true
     },
     {
       name: 'Feijiu网',
       baseUrl: 'http://apps.feijiu.net/',
-      listSelector: '.hq-list .hq-item',      // ⚠️ 需根据实际页面结构调整
-      fields: {
-        category: '.hq-name',
-        price: '.hq-price',
-        change: '.hq-change',
-        date: '.hq-date'
-      },
+      listSelector: '.hq-list .hq-item',
+      fields: { category: '.hq-name', price: '.hq-price', change: '.hq-change', date: '.hq-date' },
       intervalMinutes: 180,
       enabled: true
     },
     {
       name: '91再生',
       baseUrl: 'https://jiage.zz91.com/',
-      listSelector: '.market-list .item',     // ⚠️ 需根据实际页面结构调整
-      fields: {
-        category: '.title',
-        price: '.price',
-        change: '.trend',
-        date: '.time'
-      },
+      listSelector: '.market-list .item',
+      fields: { category: '.title', price: '.price', change: '.trend', date: '.time' },
       intervalMinutes: 240,
       enabled: true
     },
   ]
 };
 
-// 初始化种子数据
+// ==================== 核心：初始化种子数据（支持外部JSON热更新） ====================
 async function initSeedData() {
-  // 检查是否已初始化，且版本是否一致
-  const initialized = await DB.getSetting('seed_initialized', false);
-  const seedVersion = await DB.getSetting('seed_version', '0.0.0');
+  // ---------- 第1步：尝试加载外部 JSON 配置 ----------
+  let externalRules = null;
+  let loadError = null;
 
-  // 版本升级时重新写入爬虫配置（覆盖旧URL）
-  if (initialized && seedVersion === CRAWLER_RULES.version) {
-    return false;
+  try {
+    // 加时间戳防止缓存
+    const resp = await fetch('./data/crawler-rules.json?v=' + Date.now());
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}`);
+    }
+    externalRules = await resp.json();
+    console.log('[Seed] ✅ 外部爬虫规则加载成功:', externalRules.version);
+  } catch (e) {
+    loadError = e.message;
+    console.warn('[Seed] ⚠️ 外部规则加载失败，使用内置规则:', e.message);
   }
 
-  console.log(`[Seed] 开始初始化种子数据... (版本 ${CRAWLER_RULES.version})`);
+  // ---------- 第2步：确定最终使用的规则 ----------
+  const rules = externalRules || CRAWLER_RULES;
+  const currentVersion = rules.version || '1.0.0';
 
-  // 写入父级品类
-  await DB.bulkPut('categories', PARENT_CATEGORIES.map(c => ({ ...c, name: c.name, unit: c.unit || '', sort_order: c.sort_order })));
+  // ---------- 第3步：检查是否需要首次初始化 ----------
+  const initialized = await DB.getSetting('seed_initialized', false);
+  const seedVersion = await DB.getSetting('seed_version', '0.0.0');
+  const lastRulesVersion = await DB.getSetting('last_crawler_rules_version', '0.0.0');
 
-  // 写入子品类
-  await DB.bulkPut('categories', CATEGORIES.map(c => ({
-    id: c.id,
-    name: c.name,
-    unit: c.unit,
-    parent_id: c.parent_id,
-    sort_order: c.sort,
-    icon: c.icon,
-  })));
+  // 首次初始化：写入品类、价格、地区、默认设置
+  if (!initialized) {
+    console.log(`[Seed] 🚀 首次初始化种子数据... (版本 ${currentVersion})`);
 
-  // 写入价格数据
-  const prices = generateSeedPrices();
-  await DB.bulkPut('prices', prices);
+    // 写入父级品类
+    await DB.bulkPut('categories', PARENT_CATEGORIES.map(c => ({
+      ...c,
+      name: c.name,
+      unit: c.unit || '',
+      sort_order: c.sort_order,
+    })));
 
-  // 写入地区
-  await DB.bulkPut('regions', REGIONS);
+    // 写入子品类
+    await DB.bulkPut('categories', CATEGORIES.map(c => ({
+      id: c.id,
+      name: c.name,
+      unit: c.unit,
+      parent_id: c.parent_id,
+      sort_order: c.sort,
+      icon: c.icon,
+    })));
 
-  // 写入默认设置
-  await DB.setSetting('current_region', 'default');
-  await DB.setSetting('crawler_enabled', true);
-  await DB.setSetting('crawler_wifi_only', true);
-  await DB.setSetting('crawler_min_battery', 20);
-  await DB.setSetting('crawler_interval_minutes', 120);
-  await DB.setSetting('last_crawl_at', null);
-  await DB.setSetting('last_crawl_status', null);
+    // 写入90天历史价格
+    const prices = generateSeedPrices();
+    await DB.bulkPut('prices', prices);
 
-  // 写入爬虫配置（覆盖旧配置）
-  const crawlerConfigs = CRAWLER_RULES.sites.map((site, i) => ({
-    id: `crawler_${i}`,
-    website_name: site.name,
-    base_url: site.baseUrl,
-    css_selector: site.listSelector,
-    fields: JSON.stringify(site.fields),
-    enabled: site.enabled,
-    interval_minutes: site.intervalMinutes,
-    last_success_at: null,
-    last_error: null,
-    version: CRAWLER_RULES.version,
-  }));
-  await DB.bulkPut('crawler_configs', crawlerConfigs);
+    // 写入地区
+    await DB.bulkPut('regions', REGIONS);
 
-  await DB.setSetting('seed_initialized', true);
-  await DB.setSetting('seed_version', CRAWLER_RULES.version);
+    // 写入默认设置
+    await DB.setSetting('current_region', 'default');
+    await DB.setSetting('crawler_enabled', true);
+    await DB.setSetting('crawler_wifi_only', true);
+    await DB.setSetting('crawler_min_battery', 20);
+    await DB.setSetting('crawler_interval_minutes', 120);
+    await DB.setSetting('last_crawl_at', null);
+    await DB.setSetting('last_crawl_status', null);
 
-  console.log(`[Seed] 初始化完成：${CATEGORIES.length}个品类，${prices.length}条价格记录，${CRAWLER_RULES.sites.length}个爬虫站点`);
-  return true;
+    // 标记已初始化
+    await DB.setSetting('seed_initialized', true);
+  }
+
+  // ---------- 第4步：检查爬虫配置是否需要更新 ----------
+  // 逻辑：首次初始化、版本号变化、或外部JSON有更新时，都重写爬虫配置
+  const needUpdateRules = !initialized || seedVersion !== currentVersion || lastRulesVersion !== currentVersion;
+
+  if (needUpdateRules) {
+    console.log(`[Seed] 🔄 更新爬虫配置: ${lastRulesVersion} → ${currentVersion}`);
+
+    // 验证规则格式
+    if (!rules.sites || !Array.isArray(rules.sites)) {
+      console.error('[Seed] ❌ 爬虫规则格式错误，缺少 sites 数组');
+      return false;
+    }
+
+    const crawlerConfigs = rules.sites.map((site, i) => ({
+      id: `crawler_${i}`,
+      website_name: site.name,
+      base_url: site.baseUrl,
+      css_selector: site.listSelector,
+      fields: JSON.stringify(site.fields),
+      enabled: site.enabled !== false, // 默认 true
+      interval_minutes: site.intervalMinutes || 120,
+      last_success_at: null,
+      last_error: null,
+      version: currentVersion,
+    }));
+
+    await DB.bulkPut('crawler_configs', crawlerConfigs);
+
+    // 更新版本记录
+    await DB.setSetting('seed_version', currentVersion);
+    await DB.setSetting('last_crawler_rules_version', currentVersion);
+
+    // 记录外部/内置来源
+    await DB.setSetting('crawler_rules_source', externalRules ? 'external_json' : 'builtin');
+
+    console.log(`[Seed] ✅ 爬虫配置已更新: ${rules.sites.length} 个站点`);
+
+    if (!initialized) {
+      const priceCount = (await DB.getAll('prices')).length;
+      console.log(`[Seed] 🎉 首次初始化完成：${CATEGORIES.length}个品类，${priceCount}条价格记录`);
+    } else {
+      // 非首次但规则更新了，给用户一个提示
+      console.log(`[Seed] 📢 检测到爬虫规则更新，已自动热重载`);
+    }
+
+    return true;
+  }
+
+  console.log(`[Seed] ⏭️ 种子数据已是最新版本 (${currentVersion})，跳过更新`);
+  return false;
 }
