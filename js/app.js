@@ -13,28 +13,16 @@ const App = (() => {
   // ===== 初始化 =====
   async function init() {
     try {
-      // 1. 初始化数据库
       await DB.init();
-
-      // 2. 初始化种子数据
       await initSeedData();
-
-      // 3. 加载收藏
       await loadFavorites();
-
-      // 4. 渲染各页面
       await renderMarket();
       await renderLedger();
       await initTrendControls();
       await renderSettings();
-
-      // 5. 恢复状态栏
       await Crawler.restoreStatusBar();
-
-      // 6. 启动爬虫定时器
       await Crawler.startScheduler();
 
-      // 7. 如果上次同步超过2小时，自动爬取一次
       const lastCrawl = await DB.getSetting('last_crawl_at', null);
       if (lastCrawl) {
         const elapsed = Date.now() - new Date(lastCrawl).getTime();
@@ -47,12 +35,8 @@ const App = (() => {
         }
       }
 
-      // 8. 注册 Service Worker
       registerSW();
-
-      // 9. 填充表单选项
       await fillCategorySelects();
-
       console.log('[App] 初始化完成');
     } catch (e) {
       console.error('[App] 初始化失败:', e);
@@ -77,19 +61,15 @@ const App = (() => {
 
   // ===== Tab 切换 =====
   function switchTab(tabName) {
-    // 更新导航按钮
     document.querySelectorAll('.nav-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.tab === tabName);
     });
-    // 更新内容
     document.querySelectorAll('.tab-content').forEach(content => {
       content.classList.toggle('active', content.id === `tab-${tabName}`);
     });
-    // 切换到趋势时重新渲染图表
     if (tabName === 'trends') {
       setTimeout(renderTrendChart, 100);
     }
-    // 切换到设置时更新状态
     if (tabName === 'settings') {
       renderCrawlerStatus();
     }
@@ -102,12 +82,11 @@ const App = (() => {
 
     const categories = await DB.getAll('categories');
     const subCategories = categories
-      .filter(c => c.parent_id) // 只显示子品类
+      .filter(c => c.parent_id)
       .filter(c => !currentFilter || c.parent_id === currentFilter)
       .filter(c => !currentSearch || c.name.includes(currentSearch))
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
-    // 收藏的排前面
     subCategories.sort((a, b) => {
       const aFav = favoriteIds.has(a.id) ? 0 : 1;
       const bFav = favoriteIds.has(b.id) ? 0 : 1;
@@ -129,7 +108,6 @@ const App = (() => {
       const latest = await DB.getLatestPrice(cat.id, regionCode);
       if (!latest) continue;
 
-      // 计算涨跌（和上一条比较）
       const history = await DB.getPriceHistory(cat.id, 7, regionCode);
       const prevPrice = history.length >= 2 ? history[history.length - 2] : null;
       const change = prevPrice ? ((latest.buy_price + latest.sell_price) / 2) - ((prevPrice.buy_price + prevPrice.sell_price) / 2) : 0;
@@ -139,8 +117,9 @@ const App = (() => {
       const changeIcon = change > 0 ? '↑' : change < 0 ? '↓' : '→';
       const changeText = change === 0 ? '持平' : `${changeIcon} ${Math.abs(change).toFixed(0)} (${Math.abs(changePercent).toFixed(1)}%)`;
 
+      // ✅ 增强：显示具体数据来源
       const sourceMap = {
-        crawler: { tag: '🕷️', label: '爬虫', class: 'crawler' },
+        crawler: { tag: '🕷️', label: latest.source_detail || '爬虫', class: 'crawler' },
         user: { tag: '✏️', label: '我记的', class: 'user' },
         share: { tag: '👥', label: '分享', class: 'share' },
         seed: { tag: '📦', label: '参考', class: 'seed' },
@@ -215,7 +194,7 @@ const App = (() => {
     await renderMarket();
   }
 
-  // 价格详情（点击卡片展开录入弹窗）
+  // 价格详情
   async function showPriceDetail(categoryId) {
     await showPriceModal(categoryId);
   }
@@ -229,7 +208,6 @@ const App = (() => {
     const records = await DB.getAll('ledger');
     records.sort((a, b) => new Date(b.recorded_at) - new Date(a.recorded_at));
 
-    // 统计
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     let monthBuy = 0, monthSell = 0;
@@ -311,7 +289,6 @@ const App = (() => {
     select1.innerHTML = options;
     select2.innerHTML = '<option value="">不对比</option>' + options;
 
-    // 默认选第一个
     if (categories.length > 0) {
       select1.value = categories[0].id;
     }
@@ -347,6 +324,7 @@ const App = (() => {
     await renderCrawlerStatus();
   }
 
+  // ✅ 增强：爬虫状态展示，新增错误详情面板
   async function renderCrawlerStatus() {
     const el = document.getElementById('crawler-status-detail');
     if (!el) return;
@@ -355,6 +333,7 @@ const App = (() => {
     const lastStatus = await DB.getSetting('last_crawl_status', null);
     const lastItems = await DB.getSetting('last_crawl_items', 0);
     const skipReason = await DB.getSetting('last_crawl_skip_reason', null);
+    const errorDetailRaw = await DB.getSetting('last_crawl_error_detail', null);
 
     const configs = await DB.getAll('crawler_configs');
     const logs = await DB.getAll('crawl_logs');
@@ -399,6 +378,7 @@ const App = (() => {
         <div class="crawler-site-item">
           <div class="crawler-site-name">${config.enabled ? '✅' : '⏸️'} ${config.website_name}</div>
           <div class="crawler-site-status"><span class="${statusClass}">${statusText}</span></div>
+          <div class="crawler-site-url" style="font-size:11px;color:#888;margin-top:2px;">${config.base_url}</div>
         </div>
       `;
     }
@@ -408,13 +388,59 @@ const App = (() => {
       html += '<div style="margin-top:12px;font-size:14px;font-weight:600;margin-bottom:8px;">📜 最近日志</div>';
       for (const log of logs.slice(0, 5)) {
         const time = new Date(log.crawled_at).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-        const statusText = log.status === 'success' ? `✅ ${log.items_scraped}条` : `❌ ${log.error_msg || '失败'}`;
+        const statusText = log.status === 'success'
+          ? `✅ ${log.items_scraped}条 (代理:${log.proxy_used || '-'}, 匹配:${log.matched_elements || 0})`
+          : `❌ ${log.error_msg || '失败'} (代理:${log.proxy_used || '-'}, HTTP:${log.http_status || '-'})`;
         html += `
           <div class="crawler-site-item">
             <div class="crawler-site-name">${log.website_name}</div>
-            <div class="crawler-site-status">${statusText} · ${time} · ${log.duration_ms}ms</div>
+            <div class="crawler-site-status" style="font-size:12px;">${statusText}</div>
+            <div class="crawler-site-status" style="font-size:11px;color:#888;">${time} · ${log.duration_ms}ms · 解析错误:${log.parse_errors || 0}</div>
           </div>
         `;
+      }
+    }
+
+    // ✅ 新增：错误详情面板（方便调试）
+    if (errorDetailRaw && lastStatus === 'failed') {
+      try {
+        const errorDetails = JSON.parse(errorDetailRaw);
+        html += '<div style="margin-top:16px;font-size:14px;font-weight:600;margin-bottom:8px;color:#e53935;">🔧 错误详情（调试用）</div>';
+        html += '<div style="background:#fff3f3;border:1px solid #ffcdd2;border-radius:8px;padding:10px;font-size:12px;line-height:1.6;max-height:300px;overflow-y:auto;">';
+
+        for (const detail of errorDetails) {
+          html += `<div style="margin-bottom:10px;padding-bottom:8px;border-bottom:1px dashed #ffcdd2;">`;
+          html += `<div style="font-weight:600;color:#c62828;">📌 ${detail.site || detail.stage || '全局'}</div>`;
+          if (detail.url) html += `<div style="color:#666;">🔗 ${detail.url}</div>`;
+          if (detail.error) html += `<div style="color:#d32f2f;">❌ ${detail.error}</div>`;
+          if (detail.proxyUsed !== undefined) html += `<div>代理: ${detail.proxyUsed || '无'} | HTTP: ${detail.httpStatus || '-'} | 匹配元素: ${detail.matchedElements !== undefined ? detail.matchedElements : '-'}</div>`;
+          if (detail.parseErrors !== undefined) html += `<div>解析错误数: ${detail.parseErrors}</div>`;
+          if (detail.errorDetail) {
+            // 尝试格式化 JSON error_detail
+            try {
+              const inner = JSON.parse(detail.errorDetail);
+              if (inner.proxyAttempts) {
+                html += `<div style="margin-top:4px;color:#555;">代理尝试:</div>`;
+                for (const pa of inner.proxyAttempts) {
+                  html += `<div style="padding-left:8px;color:#777;">· [${pa.proxy}] ${pa.status}${pa.httpStatus ? ' HTTP:'+pa.httpStatus : ''}${pa.error ? ' | '+pa.error : ''}</div>`;
+                }
+              }
+              if (inner.parseErrors && inner.parseErrors.length > 0) {
+                html += `<div style="margin-top:4px;color:#555;">解析错误:</div>`;
+                for (const pe of inner.parseErrors.slice(0, 3)) {
+                  html += `<div style="padding-left:8px;color:#777;">· [${pe.index}] ${pe.error}</div>`;
+                }
+              }
+            } catch (e) {
+              html += `<div style="color:#888;">${detail.errorDetail}</div>`;
+            }
+          }
+          html += `</div>`;
+        }
+
+        html += '</div>';
+      } catch (e) {
+        html += `<div style="color:#e53935;">错误详情解析失败</div>`;
       }
     }
 
@@ -425,7 +451,6 @@ const App = (() => {
     await DB.setSetting(key, value);
     showToast('✅ 设置已保存');
 
-    // 如果是爬虫相关设置，重启定时器
     if (key === 'crawler_enabled' || key === 'crawler_interval_minutes') {
       const enabled = await DB.getSetting('crawler_enabled', true);
       if (enabled) {
@@ -441,7 +466,6 @@ const App = (() => {
     const modal = document.getElementById('modal-price');
     const select = document.getElementById('price-category');
 
-    // 填充品类选项
     if (!select.options.length) {
       await fillCategorySelects();
     }
@@ -450,7 +474,6 @@ const App = (() => {
       select.value = categoryId;
     }
 
-    // 清空输入
     document.getElementById('price-buy').value = '';
     document.getElementById('price-sell').value = '';
     document.getElementById('price-note').value = '';
@@ -458,13 +481,11 @@ const App = (() => {
 
     modal.classList.remove('hidden');
 
-    // 如果有品类选中，预填参考价
     if (select.value) {
       await checkPriceCompare();
     }
   }
 
-  // 检查价格对比
   async function checkPriceCompare() {
     const catId = document.getElementById('price-category').value;
     const buyInput = document.getElementById('price-buy');
@@ -531,7 +552,6 @@ const App = (() => {
   // ===== 弹窗：记账 =====
   function showLedgerModal() {
     const modal = document.getElementById('modal-ledger');
-    // 清空输入
     document.getElementById('ledger-weight').value = '';
     document.getElementById('ledger-unit-price').value = '';
     document.getElementById('ledger-counterparty').value = '';

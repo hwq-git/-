@@ -140,14 +140,13 @@ function generateSeedPrices() {
       currentBuy = Math.max(Math.round(base.buy * 0.8), Math.min(Math.round(base.buy * 1.2), currentBuy));
       currentSell = Math.max(Math.round(base.sell * 0.8), Math.min(Math.round(base.sell * 1.2), currentSell));
 
-      const source = d === 0 ? 'seed' : 'seed';
       prices.push({
         id: `seed_${cat.id}_${d}`,
         category_id: cat.id,
         buy_price: currentBuy,
         sell_price: currentSell,
         region_code: 'default',
-        source: source,
+        source: 'seed',
         source_detail: '系统参考价',
         recorded_at: date.toISOString(),
         created_at: date.toISOString(),
@@ -160,7 +159,7 @@ function generateSeedPrices() {
 
 // 爬虫规则配置
 const CRAWLER_RULES = {
-  version: '1.0.0',
+  version: '1.0.1',
   updated_at: new Date().toISOString(),
   sites: [
     {
@@ -178,8 +177,8 @@ const CRAWLER_RULES = {
     },
     {
       name: 'Feijiu网',
-      baseUrl: 'https://www.feijiu.com/hangqing/',
-      listSelector: '.hq-list .hq-item',
+      baseUrl: 'http://apps.feijiu.net/',
+      listSelector: '.hq-list .hq-item',      // ⚠️ 需根据实际页面结构调整
       fields: {
         category: '.hq-name',
         price: '.hq-price',
@@ -191,8 +190,8 @@ const CRAWLER_RULES = {
     },
     {
       name: '91再生',
-      baseUrl: 'https://www.91zaisheng.com/market/',
-      listSelector: '.market-list .item',
+      baseUrl: 'https://jiage.zz91.com/',
+      listSelector: '.market-list .item',     // ⚠️ 需根据实际页面结构调整
       fields: {
         category: '.title',
         price: '.price',
@@ -207,11 +206,16 @@ const CRAWLER_RULES = {
 
 // 初始化种子数据
 async function initSeedData() {
-  // 检查是否已初始化
+  // 检查是否已初始化，且版本是否一致
   const initialized = await DB.getSetting('seed_initialized', false);
-  if (initialized) return false;
+  const seedVersion = await DB.getSetting('seed_version', '0.0.0');
 
-  console.log('[Seed] 开始初始化种子数据...');
+  // 版本升级时重新写入爬虫配置（覆盖旧URL）
+  if (initialized && seedVersion === CRAWLER_RULES.version) {
+    return false;
+  }
+
+  console.log(`[Seed] 开始初始化种子数据... (版本 ${CRAWLER_RULES.version})`);
 
   // 写入父级品类
   await DB.bulkPut('categories', PARENT_CATEGORIES.map(c => ({ ...c, name: c.name, unit: c.unit || '', sort_order: c.sort_order })));
@@ -242,7 +246,7 @@ async function initSeedData() {
   await DB.setSetting('last_crawl_at', null);
   await DB.setSetting('last_crawl_status', null);
 
-  // 写入爬虫配置
+  // 写入爬虫配置（覆盖旧配置）
   const crawlerConfigs = CRAWLER_RULES.sites.map((site, i) => ({
     id: `crawler_${i}`,
     website_name: site.name,
@@ -258,8 +262,8 @@ async function initSeedData() {
   await DB.bulkPut('crawler_configs', crawlerConfigs);
 
   await DB.setSetting('seed_initialized', true);
-  await DB.setSetting('seed_version', '1.0.0');
+  await DB.setSetting('seed_version', CRAWLER_RULES.version);
 
-  console.log(`[Seed] 初始化完成：${CATEGORIES.length}个品类，${prices.length}条价格记录`);
+  console.log(`[Seed] 初始化完成：${CATEGORIES.length}个品类，${prices.length}条价格记录，${CRAWLER_RULES.sites.length}个爬虫站点`);
   return true;
 }

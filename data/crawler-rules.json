@@ -18,10 +18,10 @@
     },
     {
       "name": "Feijiu网",
-      "baseUrl": "https://www.feijiu.com/hangqing/",
-      "listSelector": ".hq-list .hq-item",
+      "baseUrl": "http://apps.feijiu.net/",
+      "listSelector": ".hq-list .hq-item",      // ⚠️ 需根据实际页面结构调整
       "fields": {
-        "category": ".hq-name",
+        "category":".hq-name",
         "price": ".hq-price",
         "change": ".hq-change",
         "date": ".hq-date"
@@ -31,8 +31,8 @@
     },
     {
       "name": "91再生",
-      "baseUrl": "https://www.91zaisheng.com/market/",
-      "listSelector": ".market-list .item",
+      "baseUrl": "https://jiage.zz91.com/",
+      "listSelector": ".market-list .item",     // ⚠️ 需根据实际页面结构调整
       "fields": {
         "category": ".title",
         "price": ".price",

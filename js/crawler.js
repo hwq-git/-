@@ -5,15 +5,15 @@
  * - 请求间隔3~8秒随机延迟
  * - 失败重试，自动切换备选网站
  * - 智能节电策略（WiFi + 电量检测）
- * - 轻度/深度爬取策略
+ * - 增强日志：详细记录代理尝试、HTTP状态、CSS匹配数、解析错误，方便调试
  */
 
 const Crawler = (() => {
   // CORS 代理列表（轮换使用）
   const CORS_PROXIES = [
-    (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-    (url) => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`,
+    { name: 'allorigins', fn: (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}` },
+    { name: 'corsproxy',  fn: (url) => `https://corsproxy.io/?${encodeURIComponent(url)}` },
+    { name: 'codetabs',   fn: (url) => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}` },
   ];
 
   // 随机 User-Agent
@@ -44,7 +44,6 @@ const Crawler = (() => {
     const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     const wifiOnly = await DB.getSetting('crawler_wifi_only', true);
     if (wifiOnly && connection) {
-      // type: wifi, cellular, ethernet, etc.
       if (connection.type === 'cellular' && connection.type !== 'wifi') {
         return { ok: false, reason: '非WiFi网络，已跳过（节电模式）' };
       }
@@ -62,117 +61,212 @@ const Crawler = (() => {
       }
       return { ok: true };
     } catch (e) {
-      // getBattery 不支持所有浏览器，忽略电量检查
       return { ok: true };
     }
   }
 
-  // 通过代理抓取网页
+  /**
+   * 通过代理抓取网页（增强版）
+   * 返回详细调试信息，包括每个代理的尝试结果
+   */
   async function fetchPage(url) {
+    const proxyAttempts = [];
     let lastError = null;
 
     for (let i = 0; i < CORS_PROXIES.length; i++) {
-      const proxyUrl = CORS_PROXIES[i](url);
+      const proxy = CORS_PROXIES[i];
+      const proxyUrl = proxy.fn(url);
+      const attempt = {
+        proxy: proxy.name,
+        proxyUrl: proxyUrl,
+        status: 'pending',
+        httpStatus: null,
+        htmlLength: 0,
+        error: null,
+        durationMs: 0,
+      };
+
       try {
+        const start = Date.now();
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000);
 
         const response = await fetch(proxyUrl, {
           signal: controller.signal,
-          headers: {
-            'User-Agent': getRandomUA(),
-          },
+          headers: { 'User-Agent': getRandomUA() },
         });
 
         clearTimeout(timeoutId);
+        attempt.durationMs = Date.now() - start;
+        attempt.httpStatus = response.status;
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+          attempt.status = 'failed';
+          attempt.error = `HTTP ${response.status} ${response.statusText}`;
+          proxyAttempts.push(attempt);
+          console.warn(`[Crawler] 代理 ${proxy.name} 返回 HTTP ${response.status}`);
+          if (i < CORS_PROXIES.length - 1) await randomDelay(1000, 2000);
+          continue;
         }
 
         const html = await response.text();
-        if (html && html.length > 100) {
-          return html;
+        attempt.htmlLength = html.length;
+
+        if (!html || html.length < 100) {
+          attempt.status = 'failed';
+          attempt.error = `返回内容为空或过短 (${html.length} bytes)`;
+          proxyAttempts.push(attempt);
+          console.warn(`[Crawler] 代理 ${proxy.name} 内容过短`);
+          if (i < CORS_PROXIES.length - 1) await randomDelay(1000, 2000);
+          continue;
         }
-        throw new Error('返回内容为空或过短');
+
+        // 成功
+        attempt.status = 'success';
+        proxyAttempts.push(attempt);
+
+        return {
+          success: true,
+          html: html,
+          proxyUsed: proxy.name,
+          proxyAttempts: proxyAttempts,
+          httpStatus: response.status,
+          htmlLength: html.length,
+          errorDetail: null,
+        };
+
       } catch (err) {
+        attempt.status = 'failed';
+        attempt.error = err.message || String(err);
+        proxyAttempts.push(attempt);
         lastError = err;
-        console.warn(`[Crawler] 代理${i + 1}失败: ${err.message}`);
-        // 切换到下一个代理前等待
-        if (i < CORS_PROXIES.length - 1) {
-          await randomDelay(1000, 2000);
-        }
+        console.warn(`[Crawler] 代理 ${proxy.name} 失败: ${err.message}`);
+        if (i < CORS_PROXIES.length - 1) await randomDelay(1000, 2000);
       }
     }
 
-    throw lastError || new Error('所有代理均失败');
+    // 所有代理均失败
+    const errorDetail = proxyAttempts.map(a =>
+      `[${a.proxy}] ${a.status.toUpperCase()}${a.httpStatus ? ' HTTP:' + a.httpStatus : ''}${a.error ? ' | ' + a.error : ''} (len:${a.htmlLength})`
+    ).join(' → ');
+
+    return {
+      success: false,
+      html: null,
+      proxyUsed: null,
+      proxyAttempts: proxyAttempts,
+      httpStatus: null,
+      htmlLength: 0,
+      errorDetail: errorDetail || (lastError ? lastError.message : '所有代理均失败'),
+    };
   }
 
-  // 解析HTML，提取价格数据
+  /**
+   * 解析HTML，提取价格数据（增强版）
+   * 返回解析结果 + 调试信息（匹配元素数、解析错误详情）
+   */
   function parsePrices(html, rule) {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const items = doc.querySelectorAll(rule.listSelector || rule.css_selector);
-    const results = [];
+    const parseErrors = [];
+    let matchedElements = 0;
 
-    items.forEach(item => {
-      try {
-        let fields = rule.fields;
-        if (typeof fields === 'string') fields = JSON.parse(fields);
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const items = doc.querySelectorAll(rule.listSelector || rule.css_selector);
+      matchedElements = items.length;
+      const results = [];
 
-        const getCategoryText = (el) => {
-          if (!el) return '';
-          return el.textContent.trim();
+      if (matchedElements === 0) {
+        return {
+          results: [],
+          matchedElements: 0,
+          parseErrors: [],
+          errorDetail: `CSS选择器 "${rule.listSelector || rule.css_selector}" 未匹配到任何元素，页面结构可能已变更`,
         };
-
-        const nameEl = item.querySelector(fields.category);
-        const priceEl = item.querySelector(fields.price);
-        const changeEl = item.querySelector(fields.change);
-        const dateEl = item.querySelector(fields.date);
-
-        const name = getCategoryText(nameEl);
-        const priceText = getCategoryText(priceEl);
-        const changeText = getCategoryText(changeEl);
-        const dateText = getCategoryText(dateEl);
-
-        if (!name || !priceText) return;
-
-        // 解析价格数字
-        const priceMatch = priceText.match(/[\d,]+\.?\d*/);
-        if (!priceMatch) return;
-        const price = parseFloat(priceMatch[0].replace(/,/g, ''));
-
-        // 匹配品类
-        const matchedCategory = matchCategory(name);
-        if (!matchedCategory) return;
-
-        // 解析涨跌
-        let change = 0;
-        if (changeText) {
-          if (changeText.includes('↑') || changeText.includes('涨') || changeText.includes('+')) {
-            const numMatch = changeText.match(/[\d,.]+/);
-            if (numMatch) change = parseFloat(numMatch[0].replace(/,/g, ''));
-          } else if (changeText.includes('↓') || changeText.includes('跌') || changeText.includes('-')) {
-            const numMatch = changeText.match(/[\d,.]+/);
-            if (numMatch) change = -parseFloat(numMatch[0].replace(/,/g, ''));
-          }
-        }
-
-        results.push({
-          category_id: matchedCategory.id,
-          category_name: matchedCategory.name,
-          buy_price: Math.round(price * 0.97), // 收购价略低于行情
-          sell_price: Math.round(price * 1.01), // 卖出价略高于行情
-          change: change,
-          source_detail: rule.website_name || rule.website_name,
-          date_text: dateText,
-        });
-      } catch (e) {
-        // 单条解析失败不影响其他
       }
-    });
 
-    return results;
+      items.forEach((item, idx) => {
+        try {
+          let fields = rule.fields;
+          if (typeof fields === 'string') fields = JSON.parse(fields);
+
+          const getCategoryText = (el) => el ? el.textContent.trim() : '';
+
+          const nameEl = item.querySelector(fields.category);
+          const priceEl = item.querySelector(fields.price);
+          const changeEl = item.querySelector(fields.change);
+          const dateEl = item.querySelector(fields.date);
+
+          const name = getCategoryText(nameEl);
+          const priceText = getCategoryText(priceEl);
+          const changeText = getCategoryText(changeEl);
+          const dateText = getCategoryText(dateEl);
+
+          if (!name || !priceText) {
+            parseErrors.push({ index: idx, error: '缺少品名或价格', rawText: item.textContent.trim().slice(0, 80) });
+            return;
+          }
+
+          // 解析价格数字
+          const priceMatch = priceText.match(/[\d,]+\.?\d*/);
+          if (!priceMatch) {
+            parseErrors.push({ index: idx, error: `无法从 "${priceText}" 解析价格`, rawText: item.textContent.trim().slice(0, 80) });
+            return;
+          }
+          const price = parseFloat(priceMatch[0].replace(/,/g, ''));
+
+          // 匹配品类
+          const matchedCategory = matchCategory(name);
+          if (!matchedCategory) {
+            parseErrors.push({ index: idx, error: `品名 "${name}" 未匹配到已知品类`, rawText: item.textContent.trim().slice(0, 80) });
+            return;
+          }
+
+          // 解析涨跌
+          let change = 0;
+          if (changeText) {
+            if (changeText.includes('↑') || changeText.includes('涨') || changeText.includes('+')) {
+              const numMatch = changeText.match(/[\d,.]+/);
+              if (numMatch) change = parseFloat(numMatch[0].replace(/,/g, ''));
+            } else if (changeText.includes('↓') || changeText.includes('跌') || changeText.includes('-')) {
+              const numMatch = changeText.match(/[\d,.]+/);
+              if (numMatch) change = -parseFloat(numMatch[0].replace(/,/g, ''));
+            }
+          }
+
+          results.push({
+            category_id: matchedCategory.id,
+            category_name: matchedCategory.name,
+            buy_price: Math.round(price * 0.97),
+            sell_price: Math.round(price * 1.01),
+            change: change,
+            source_detail: rule.website_name || rule.website_name,
+            date_text: dateText,
+          });
+        } catch (e) {
+          parseErrors.push({ index: idx, error: e.message, rawText: item.textContent.trim().slice(0, 80) });
+        }
+      });
+
+      const errorDetail = parseErrors.length > 0
+        ? `匹配到 ${matchedElements} 个元素，成功解析 ${results.length} 条，失败 ${parseErrors.length} 条`
+        : `匹配到 ${matchedElements} 个元素，全部解析成功 (${results.length} 条)`;
+
+      return {
+        results,
+        matchedElements,
+        parseErrors,
+        errorDetail,
+      };
+
+    } catch (e) {
+      return {
+        results: [],
+        matchedElements: 0,
+        parseErrors: [{ index: -1, error: 'DOM解析异常: ' + e.message }],
+        errorDetail: `DOM解析失败: ${e.message}`,
+      };
+    }
   }
 
   // 品名匹配
@@ -186,7 +280,10 @@ const Crawler = (() => {
     return null;
   }
 
-  // 爬取单个网站
+  /**
+   * 爬取单个网站（增强版）
+   * 详细记录：代理尝试、HTTP状态、匹配元素数、解析错误
+   */
   async function crawlSite(config) {
     const startTime = Date.now();
     const log = {
@@ -195,43 +292,86 @@ const Crawler = (() => {
       status: 'failed',
       items_scraped: 0,
       error_msg: '',
+      error_detail: null,      // 新增：详细错误JSON
+      proxy_used: null,        // 新增：最终使用的代理
+      http_status: null,       // 新增：HTTP状态码
+      matched_elements: 0,     // 新增：CSS匹配元素数
+      parse_errors: 0,         // 新增：解析错误数
       duration_ms: 0,
       crawled_at: new Date().toISOString(),
     };
 
     try {
       console.log(`[Crawler] 正在爬取: ${config.website_name} (${config.base_url})`);
-      const html = await fetchPage(config.base_url);
-      const prices = parsePrices(html, config);
 
-      log.status = 'success';
-      log.items_scraped = prices.length;
-      log.duration_ms = Date.now() - startTime;
+      // 1. 抓取页面
+      const fetchResult = await fetchPage(config.base_url);
 
-      // 保存价格数据
-      if (prices.length > 0) {
-        const regionCode = await DB.getSetting('current_region', 'default');
-        const priceRecords = prices.map(p => ({
-          id: `crawl_${p.category_id}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
-          category_id: p.category_id,
-          buy_price: p.buy_price,
-          sell_price: p.sell_price,
-          region_code: regionCode,
-          source: 'crawler',
-          source_detail: p.source_detail,
-          recorded_at: new Date().toISOString(),
-          created_at: new Date().toISOString(),
-        }));
-        await DB.bulkPut('prices', priceRecords);
-        console.log(`[Crawler] ${config.website_name}: 抓取到 ${prices.length} 条价格`);
+      log.proxy_used = fetchResult.proxyUsed;
+      log.http_status = fetchResult.httpStatus;
+
+      if (!fetchResult.success) {
+        log.error_msg = fetchResult.errorDetail;
+        log.error_detail = JSON.stringify({
+          stage: 'fetch',
+          proxyAttempts: fetchResult.proxyAttempts,
+          errorDetail: fetchResult.errorDetail,
+        });
+        throw new Error(fetchResult.errorDetail);
       }
 
-      // 更新爬虫配置
+      // 2. 解析价格
+      const parseResult = parsePrices(fetchResult.html, config);
+      log.matched_elements = parseResult.matchedElements;
+      log.parse_errors = parseResult.parseErrors.length;
+
+      if (parseResult.results.length === 0 && parseResult.matchedElements === 0) {
+        log.error_msg = parseResult.errorDetail;
+        log.error_detail = JSON.stringify({
+          stage: 'parse',
+          htmlLength: fetchResult.htmlLength,
+          matchedElements: parseResult.matchedElements,
+          parseErrors: parseResult.parseErrors.slice(0, 10), // 最多存10条
+          errorDetail: parseResult.errorDetail,
+        });
+        throw new Error(parseResult.errorDetail);
+      }
+
+      // 3. 保存价格数据
+      const regionCode = await DB.getSetting('current_region', 'default');
+      const priceRecords = parseResult.results.map(p => ({
+        id: `crawl_${p.category_id}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+        category_id: p.category_id,
+        buy_price: p.buy_price,
+        sell_price: p.sell_price,
+        region_code: regionCode,
+        source: 'crawler',
+        source_detail: config.website_name,   // ✅ 明确标记数据来源网站
+        recorded_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      }));
+      await DB.bulkPut('prices', priceRecords);
+
+      // 4. 更新日志
+      log.status = 'success';
+      log.items_scraped = parseResult.results.length;
+      log.duration_ms = Date.now() - startTime;
+      log.error_detail = JSON.stringify({
+        stage: 'success',
+        proxyUsed: fetchResult.proxyUsed,
+        htmlLength: fetchResult.htmlLength,
+        matchedElements: parseResult.matchedElements,
+        parseErrors: parseResult.parseErrors.slice(0, 5),
+      });
+
+      // 5. 更新爬虫配置
       await DB.put('crawler_configs', {
         ...config,
         last_success_at: new Date().toISOString(),
         last_error: null,
       });
+
+      console.log(`[Crawler] ${config.website_name}: 抓取到 ${parseResult.results.length} 条价格 (代理:${fetchResult.proxyUsed}, HTML:${fetchResult.htmlLength} bytes, 匹配:${parseResult.matchedElements})`);
 
     } catch (err) {
       log.error_msg = err.message;
@@ -295,25 +435,33 @@ const Crawler = (() => {
       let totalItems = 0;
       let successCount = 0;
       let failCount = 0;
+      const failDetails = [];   // 新增：收集失败详情
 
       for (let i = 0; i < enabledConfigs.length; i++) {
         const config = enabledConfigs[i];
 
         if (deep) {
-          // 深度爬取：爬取详情页
           await crawlSite(config);
         } else {
-          // 轻度爬取：只爬汇总页
           const log = await crawlSite(config);
           if (log.status === 'success') {
             successCount++;
             totalItems += log.items_scraped;
           } else {
             failCount++;
+            failDetails.push({
+              site: config.website_name,
+              url: config.base_url,
+              error: log.error_msg,
+              proxyUsed: log.proxy_used,
+              httpStatus: log.http_status,
+              matchedElements: log.matched_elements,
+              parseErrors: log.parse_errors,
+              errorDetail: log.error_detail,
+            });
           }
         }
 
-        // 请求间隔
         if (i < enabledConfigs.length - 1) {
           await randomDelay();
         }
@@ -324,6 +472,13 @@ const Crawler = (() => {
       await DB.setSetting('last_crawl_at', now);
       await DB.setSetting('last_crawl_status', successCount > 0 ? 'success' : 'failed');
       await DB.setSetting('last_crawl_items', totalItems);
+
+      // 新增：保存详细失败信息，供调试
+      if (failDetails.length > 0) {
+        await DB.setSetting('last_crawl_error_detail', JSON.stringify(failDetails));
+      } else {
+        await DB.setSetting('last_crawl_error_detail', null);
+      }
 
       console.log(`[Crawler] 爬取完成：成功${successCount}个，失败${failCount}个，共${totalItems}条数据`);
 
@@ -342,15 +497,15 @@ const Crawler = (() => {
         updateStatusBar('simulated', '行情已更新（模拟数据）');
       }
 
-      return { successCount, failCount, totalItems };
+      return { successCount, failCount, totalItems, failDetails };
 
     } catch (err) {
       console.error('[Crawler] 爬虫异常:', err);
       await DB.setSetting('last_crawl_status', 'failed');
       await DB.setSetting('last_crawl_error', err.message);
+      await DB.setSetting('last_crawl_error_detail', JSON.stringify([{ stage: 'global', error: err.message }]));
       updateStatusBar('failed', err.message);
 
-      // 异常时也使用模拟更新
       await simulatePriceUpdate();
       return { error: err.message };
     } finally {
@@ -368,17 +523,14 @@ const Crawler = (() => {
       const base = BASE_PRICES[cat.id];
       if (!base) continue;
 
-      // 获取最新价格
       const latest = await DB.getLatestPrice(cat.id, regionCode);
       let currentBuy = latest ? latest.buy_price : base.buy;
       let currentSell = latest ? latest.sell_price : base.sell;
 
-      // 模拟小幅波动
       const change = (Math.random() - 0.48) * base.volatility;
       currentBuy = Math.round(currentBuy * (1 + change));
       currentSell = Math.round(currentSell * (1 + change));
 
-      // 确保价格在合理范围
       currentBuy = Math.max(Math.round(base.buy * 0.8), Math.min(Math.round(base.buy * 1.2), currentBuy));
       const spread = Math.max(Math.round(base.sell - base.buy), 50);
       currentSell = currentBuy + spread + Math.round(Math.random() * spread * 0.3);
@@ -406,9 +558,7 @@ const Crawler = (() => {
     const bar = document.getElementById('status-bar');
     if (!bar) return;
 
-    const lastCrawl = null; // 会从设置读取
     let html = '';
-
     switch (status) {
       case 'running':
         html = `<span class="status-dot running"></span><span>正在抓取行情...</span>`;
@@ -431,7 +581,6 @@ const Crawler = (() => {
       default:
         html = `<span class="status-dot"></span><span>行情数据</span>`;
     }
-
     bar.innerHTML = html;
   }
 
@@ -452,8 +601,7 @@ const Crawler = (() => {
       if (minutesAgo < 60) {
         updateStatusBar('fresh', `${minutesAgo} 分钟前`);
       } else if (minutesAgo < 180) {
-        const hours = Math.floor(minutesAgo / 60);
-        updateStatusBar('fresh', `${hours} 小时前`);
+        updateStatusBar('fresh', `${Math.floor(minutesAgo / 60)} 小时前`);
       } else {
         updateStatusBar('skipped', `数据较旧 · ${Math.floor(minutesAgo / 60)} 小时前`);
       }
