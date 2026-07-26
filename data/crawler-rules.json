@@ -1,0 +1,46 @@
+{
+  "_comment": "爬虫规则配置文件 - 网站改版后更新此文件即可",
+  "version": "1.0.0",
+  "updated_at": "2025-07-26",
+  "sites": [
+    {
+      "name": "废品之家",
+      "baseUrl": "https://www.feipinzhijia.com/hangqing/",
+      "listSelector": ".price-list li",
+      "fields": {
+        "category": ".name",
+        "price": ".price-value",
+        "change": ".change",
+        "date": ".date"
+      },
+      "intervalMinutes": 120,
+      "enabled": true
+    },
+    {
+      "name": "Feijiu网",
+      "baseUrl": "https://www.feijiu.com/hangqing/",
+      "listSelector": ".hq-list .hq-item",
+      "fields": {
+        "category": ".hq-name",
+        "price": ".hq-price",
+        "change": ".hq-change",
+        "date": ".hq-date"
+      },
+      "intervalMinutes": 180,
+      "enabled": true
+    },
+    {
+      "name": "91再生",
+      "baseUrl": "https://www.91zaisheng.com/market/",
+      "listSelector": ".market-list .item",
+      "fields": {
+        "category": ".title",
+        "price": ".price",
+        "change": ".trend",
+        "date": ".time"
+      },
+      "intervalMinutes": 240,
+      "enabled": true
+    }
+  ]
+}

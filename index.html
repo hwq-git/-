@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#1a73e8">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="废品行情">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♻️</text></svg>">
+  <title>废品行情通 - 实时回收价格查询</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- ===== 顶部状态栏 ===== -->
+  <header id="app-header">
+    <div id="status-bar" class="status-bar" onclick="Crawler.runCrawl(false)">
+      <span class="status-dot"></span>
+      <span>正在加载...</span>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" onclick="App.refreshData()" title="刷新">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10"/><path d="M20.49 15a9 9 0 0 1-14.85 3.36L1 14"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== Tab: 行情 ===== -->
+  <main id="tab-market" class="tab-content active">
+    <div class="search-bar">
+      <input type="text" id="search-input" placeholder="搜索废品品类..." oninput="App.filterCategories(this.value)">
+    </div>
+    <div class="filter-chips" id="filter-chips">
+      <button class="chip active" data-parent="" onclick="App.setFilter('')">全部</button>
+      <button class="chip" data-parent="cat_paper" onclick="App.setFilter('cat_paper')">📄 废纸</button>
+      <button class="chip" data-parent="cat_plastic" onclick="App.setFilter('cat_plastic')">🧴 塑料</button>
+      <button class="chip" data-parent="cat_metal" onclick="App.setFilter('cat_metal')">⚙️ 金属</button>
+      <button class="chip" data-parent="cat_glass" onclick="App.setFilter('cat_glass')">🪟 玻璃</button>
+      <button class="chip" data-parent="cat_appliance" onclick="App.setFilter('cat_appliance')">🔌 家电</button>
+      <button class="chip" data-parent="cat_rubber" onclick="App.setFilter('cat_rubber')">🛞 橡胶</button>
+    </div>
+    <div id="price-list" class="price-list">
+      <!-- 价格卡片由 JS 动态生成 -->
+    </div>
+  </main>
+
+  <!-- ===== Tab: 记账 ===== -->
+  <main id="tab-ledger" class="tab-content">
+    <div class="tab-header">
+      <h2>📋 收卖记录</h2>
+      <button class="big-btn" onclick="App.showLedgerModal()">＋ 新建记录</button>
+    </div>
+    <div class="summary-cards" id="summary-cards">
+      <!-- 统计卡片由 JS 生成 -->
+    </div>
+    <div id="ledger-list" class="ledger-list">
+      <!-- 记账列表由 JS 生成 -->
+    </div>
+  </main>
+
+  <!-- ===== Tab: 趋势 ===== -->
+  <main id="tab-trends" class="tab-content">
+    <div class="tab-header">
+      <h2>📈 价格趋势</h2>
+    </div>
+    <div class="trend-controls">
+      <div class="control-group">
+        <label>选择品类</label>
+        <select id="trend-category" onchange="App.renderTrendChart()"></select>
+      </div>
+      <div class="control-group">
+        <label>对比品类（可选）</label>
+        <select id="trend-category2" onchange="App.renderTrendChart()">
+          <option value="">不对比</option>
+        </select>
+      </div>
+      <div class="period-tabs">
+        <button class="period-btn" data-days="7" onclick="App.setTrendPeriod(7)">7天</button>
+        <button class="period-btn active" data-days="30" onclick="App.setTrendPeriod(30)">30天</button>
+        <button class="period-btn" data-days="90" onclick="App.setTrendPeriod(90)">90天</button>
+      </div>
+    </div>
+    <div class="chart-container">
+      <canvas id="trend-chart"></canvas>
+    </div>
+    <div class="trend-legend">
+      <div class="legend-item"><span class="legend-dot blue"></span>蓝色实线 = 爬虫行情价</div>
+      <div class="legend-item"><span class="legend-dot red"></span>红色圆点 = 我的实际成交价</div>
+    </div>
+  </main>
+
+  <!-- ===== Tab: 我的 ===== -->
+  <main id="tab-settings" class="tab-content">
+    <div class="tab-header">
+      <h2>⚙️ 设置</h2>
+    </div>
+
+    <!-- 爬虫设置 -->
+    <div class="settings-section">
+      <h3>🕷️ 爬虫设置</h3>
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">自动爬取</div>
+          <div class="setting-desc">有网时自动更新行情</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="setting-crawler-enabled" onchange="App.updateSetting('crawler_enabled', this.checked)">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">仅WiFi下爬取</div>
+          <div class="setting-desc">节省移动流量</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="setting-wifi-only" onchange="App.updateSetting('crawler_wifi_only', this.checked)">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">爬取间隔</div>
+          <div class="setting-desc">自动爬取的时间间隔</div>
+        </div>
+        <select id="setting-interval" onchange="App.updateSetting('crawler_interval_minutes', parseInt(this.value))">
+          <option value="60">1小时</option>
+          <option value="120">2小时</option>
+          <option value="180">3小时</option>
+          <option value="360">6小时</option>
+        </select>
+      </div>
+      <button class="action-btn" onclick="Crawler.runCrawl(false)">🔄 立即爬取</button>
+    </div>
+
+    <!-- 爬虫状态 -->
+    <div class="settings-section">
+      <h3>📊 爬虫状态</h3>
+      <div id="crawler-status-detail">
+        <!-- 由 JS 生成 -->
+      </div>
+    </div>
+
+    <!-- 数据管理 -->
+    <div class="settings-section">
+      <h3>💾 数据管理</h3>
+      <button class="action-btn" onclick="Export.exportJSON()">📤 导出数据 (JSON)</button>
+      <button class="action-btn" onclick="Export.exportExcel()">📊 导出Excel</button>
+      <button class="action-btn" onclick="Export.importJSON()">📥 导入数据</button>
+    </div>
+
+    <!-- 关于 -->
+    <div class="settings-section">
+      <h3>ℹ️ 关于</h3>
+      <div class="about-info">
+        <p><strong>废品行情通</strong> v1.0.0</p>
+        <p>手机端爬虫 · 离线可用 · 零服务器成本</p>
+        <p class="about-desc">数据来源：爬虫抓取的行情价 + 用户录入的实际成交价 + 系统参考价。断网状态下可查看历史数据。</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== 底部导航 ===== -->
+  <nav id="bottom-nav">
+    <button class="nav-btn active" data-tab="market" onclick="App.switchTab('market')">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+      <span>行情</span>
+    </button>
+    <button class="nav-btn" data-tab="ledger" onclick="App.switchTab('ledger')">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span>记账</span>
+    </button>
+    <button class="nav-btn" data-tab="trends" onclick="App.switchTab('trends')">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      <span>趋势</span>
+    </button>
+    <button class="nav-btn" data-tab="settings" onclick="App.switchTab('settings')">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>我的</span>
+    </button>
+  </nav>
+
+  <!-- ===== 弹窗：录入价格 ===== -->
+  <div id="modal-price" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>✏️ 录入成交价</h3>
+        <button class="close-btn" onclick="App.closeModal('modal-price')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>选择品类</label>
+          <select id="price-category"></select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>收购价 (元)</label>
+            <input type="number" id="price-buy" placeholder="如 1450" step="any">
+          </div>
+          <div class="form-group">
+            <label>卖出价 (元)</label>
+            <input type="number" id="price-sell" placeholder="如 1550" step="any">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>备注</label>
+          <input type="text" id="price-note" placeholder="可选，如：老张送货">
+        </div>
+        <div id="price-compare-hint" class="compare-hint"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="cancel-btn" onclick="App.closeModal('modal-price')">取消</button>
+        <button class="confirm-btn" onclick="App.savePrice()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 弹窗：记账 ===== -->
+  <div id="modal-ledger" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>📋 新建记录</h3>
+        <button class="close-btn" onclick="App.closeModal('modal-ledger')">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>类型</label>
+          <div class="type-tabs">
+            <button class="type-btn active" data-type="buy" onclick="App.setLedgerType('buy')">📥 收货</button>
+            <button class="type-btn" data-type="sell" onclick="App.setLedgerType('sell')">📤 卖货</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>品类</label>
+          <select id="ledger-category"></select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>重量/数量</label>
+            <input type="number" id="ledger-weight" placeholder="如 500" step="any">
+          </div>
+          <div class="form-group">
+            <label>单价 (元)</label>
+            <input type="number" id="ledger-unit-price" placeholder="如 1450" step="any">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>对方</label>
+          <input type="text" id="ledger-counterparty" placeholder="可选，如：老王">
+        </div>
+        <div class="form-group">
+          <label>备注</label>
+          <input type="text" id="ledger-note" placeholder="可选备注">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="cancel-btn" onclick="App.closeModal('modal-ledger')">取消</button>
+        <button class="confirm-btn" onclick="App.saveLedger()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Toast 提示 ===== -->
+  <div id="toast" class="toast" style="display:none;"></div>
+
+  <!-- ===== 隐藏的文件输入 ===== -->
+  <input type="file" id="import-file" accept=".json" style="display:none;" onchange="Export.handleImport(event)">
+
+  <script src="js/db.js"></script>
+  <script src="js/seed-data.js"></script>
+  <script src="js/crawler.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/export.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
