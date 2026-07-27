@@ -343,6 +343,8 @@ button { cursor: pointer; border: none; background: none; color: inherit; }
 .user-price-values .sep { color: var(--text-light); margin: 0 6px; }
 .user-price-time { font-size: 12px; color: var(--text-light); margin-top: 2px; }
 
+.jin-price { font-size: 12px; color: var(--primary); font-weight: 500; }
+
 .empty-state {
   text-align: center;
   padding: 40px 20px;

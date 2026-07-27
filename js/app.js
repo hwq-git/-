@@ -274,13 +274,16 @@ const App = (() => {
       const typeIcon = r.type === 'buy' ? '📥' : '📤';
       const typeLabel = r.type === 'buy' ? '收货' : '卖货';
       const time = new Date(r.recorded_at).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const isTon = cat?.unit === '元/吨';
+      const unitDisplay = cat?.unit?.replace('元/', '') || 'kg';
+      const jinPrice = isTon && r.unit_price ? (r.unit_price / 2000).toFixed(2) : null;
 
       items.push(`
         <div class="ledger-item">
           <div class="type-icon ${r.type}">${typeIcon}</div>
           <div class="info">
             <div class="title">${catIcon} ${catName} · ${typeLabel}</div>
-            <div class="sub">${r.weight}${cat?.unit?.replace('元/', '') || 'kg'} × ¥${r.unit_price?.toLocaleString() || 0}${r.counterparty ? ' · ' + r.counterparty : ''} · ${time}</div>
+            <div class="sub">${r.weight}${unitDisplay} × ¥${r.unit_price?.toLocaleString() || 0}/吨${jinPrice ? ` <span class="jin-price">(≈ ${jinPrice} 元/斤)</span>` : ''}${r.counterparty ? ' · ' + r.counterparty : ''} · ${time}</div>
           </div>
           <div class="amount ${r.type}">${r.type === 'buy' ? '-' : '+'}¥${total.toLocaleString()}</div>
           <div class="item-actions">
@@ -718,6 +721,8 @@ const App = (() => {
     document.getElementById('ledger-unit-price').value = '';
     document.getElementById('ledger-counterparty').value = '';
     document.getElementById('ledger-note').value = '';
+    const jinHint = document.getElementById('ledger-jin-hint');
+    if (jinHint) { jinHint.innerHTML = ''; jinHint.classList.remove('show'); }
     setLedgerType('buy');
     modal.classList.remove('hidden');
   }
@@ -735,6 +740,7 @@ const App = (() => {
     document.getElementById('ledger-counterparty').value = record.counterparty || '';
     document.getElementById('ledger-note').value = record.note || '';
     document.getElementById('modal-ledger').classList.remove('hidden');
+    showLedgerJinHint();
   }
 
   async function deleteLedger(id) {
@@ -742,6 +748,16 @@ const App = (() => {
     await DB.deleteItem('ledger', id);
     showToast('🗑️ 记录已删除');
     await renderLedger();
+  }
+
+  function showLedgerJinHint() {
+    const input = document.getElementById('ledger-unit-price');
+    const hint = document.getElementById('ledger-jin-hint');
+    if (!hint) return;
+    const val = parseFloat(input?.value);
+    if (!val) { hint.classList.remove('show'); return; }
+    hint.innerHTML = `≈ ${(val / 2000).toFixed(2)} 元/斤`;
+    hint.className = 'compare-hint show';
   }
 
   function setLedgerType(type) {
@@ -1020,6 +1036,7 @@ const App = (() => {
     showAuthModal, saveAuth, testAuth,
     showPriceKgHint,
     editLedger, deleteLedger, editUserPrice, deleteUserPrice,
+    showLedgerJinHint,
   };
 })();
 
