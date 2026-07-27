@@ -509,7 +509,7 @@ const Crawler = (() => {
 
   // ========== 远程数据拉取（从 GitHub Actions 抓取的 JSON） ==========
   const REMOTE_PRICES_URLS = [
-    'https://raw.githubusercontent.com/kwq-git/废品每日价格/main/data/scraped-prices.json',
+    'https://raw.githubusercontent.com/hwq-git/废品每日价格/main/data/scraped-prices.json',
   ];
 
   // 本地文件作为后备
