@@ -1,9 +1,69 @@
 {
-  "version": "0.0.0",
-  "scraped_at": null,
+  "version": "1.0.0",
+  "scraped_at": "2026-07-27T14:26:19.803Z",
   "total_categories": 0,
   "total_raw": 0,
-  "errors": [],
-  "prices": [],
-  "_note": "此文件由 GitHub Actions 自动更新，请勿手动编辑"
+  "errors": [
+    {
+      "site": "金投网",
+      "url": "https://jiage.cngold.org/feijinshu/tong.shtml",
+      "error": "Request failed with status code 404"
+    },
+    {
+      "site": "金投网",
+      "url": "https://jiage.cngold.org/feijinshu/lv.shtml",
+      "error": "Request failed with status code 404"
+    },
+    {
+      "site": "金投网",
+      "url": "https://jiage.cngold.org/feijinshu/xin.shtml",
+      "error": "Request failed with status code 404"
+    },
+    {
+      "site": "金投网",
+      "url": "https://jiage.cngold.org/feijinshu/qian.shtml",
+      "error": "Request failed with status code 404"
+    },
+    {
+      "site": "ZZ91再生网",
+      "url": "https://www.zz91.com/hangqing/feijinshu/",
+      "error": "Request failed with status code 404"
+    },
+    {
+      "site": "ZZ91再生网",
+      "url": "https://www.zz91.com/hangqing/feisuliao/",
+      "error": "Request failed with status code 404"
+    },
+    {
+      "site": "ZZ91再生网",
+      "url": "https://www.zz91.com/hangqing/feizhi/",
+      "error": "Request failed with status code 404"
+    },
+    {
+      "site": "Feijiu绵阳",
+      "url": "https://www.feijiu.net/mianyang-FeiJinShu/",
+      "error": "Maximum number of redirects exceeded"
+    },
+    {
+      "site": "Feijiu绵阳",
+      "url": "https://www.feijiu.net/mianyang-FeiZhi/",
+      "error": "Maximum number of redirects exceeded"
+    },
+    {
+      "site": "Feijiu绵阳",
+      "url": "https://www.feijiu.net/mianyang-FeiSuLiao/",
+      "error": "Maximum number of redirects exceeded"
+    },
+    {
+      "site": "废品之家",
+      "url": "https://www.feipinzhijia.com/hangqing/",
+      "error": "Request failed with status code 404"
+    },
+    {
+      "site": "我的钢铁网",
+      "url": "https://www.mysteel.com/feigang.htm",
+      "error": "Request failed with status code 404"
+    }
+  ],
+  "prices": []
 }

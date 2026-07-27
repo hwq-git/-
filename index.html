@@ -98,13 +98,13 @@
       <h2>⚙️ 设置</h2>
     </div>
 
-    <!-- 爬虫设置 -->
+    <!-- 行情数据 -->
     <div class="settings-section">
-      <h3>🕷️ 爬虫设置</h3>
+      <h3>📊 行情数据</h3>
       <div class="setting-item">
         <div>
-          <div class="setting-label">自动爬取</div>
-          <div class="setting-desc">有网时自动更新行情</div>
+          <div class="setting-label">自动更新行情</div>
+          <div class="setting-desc">定时刷新行情参考数据</div>
         </div>
         <label class="switch">
           <input type="checkbox" id="setting-crawler-enabled" onchange="App.updateSetting('crawler_enabled', this.checked)">
@@ -113,18 +113,8 @@
       </div>
       <div class="setting-item">
         <div>
-          <div class="setting-label">仅WiFi下爬取</div>
-          <div class="setting-desc">节省移动流量</div>
-        </div>
-        <label class="switch">
-          <input type="checkbox" id="setting-wifi-only" onchange="App.updateSetting('crawler_wifi_only', this.checked)">
-          <span class="slider"></span>
-        </label>
-      </div>
-      <div class="setting-item">
-        <div>
-          <div class="setting-label">爬取间隔</div>
-          <div class="setting-desc">自动爬取的时间间隔</div>
+          <div class="setting-label">更新间隔</div>
+          <div class="setting-desc">自动更新时间间隔</div>
         </div>
         <select id="setting-interval" onchange="App.updateSetting('crawler_interval_minutes', parseInt(this.value))">
           <option value="60">1小时</option>
@@ -133,17 +123,16 @@
           <option value="360">6小时</option>
         </select>
       </div>
-      <button class="action-btn" onclick="Crawler.runCrawl(false)">🔄 立即爬取</button>
-      <button class="action-btn" onclick="Crawler.fetchRemotePrices().then(r => { if(r.success) App.refreshData(); else App.showToast('❌ 远程数据不可用，请先配置 GitHub 仓库地址'); })" style="background:#1a73e8;color:#fff;">☁️ 拉取远程数据</button>
+      <button class="action-btn" onclick="Crawler.simulatePriceUpdate().then(() => App.refreshData())">🔄 刷新行情数据</button>
       <div style="font-size:12px;color:#888;margin-top:8px;line-height:1.6;">
-        💡 真实数据由 GitHub Actions 定时抓取，上传仓库后自动生效。<br>
-        需在 js/crawler.js 中配置 REMOTE_PRICES_URLS 为实际 raw URL。
+        💡 行情数据基于市场基准价 + 每日波动生成。<br>
+        如需真实成交价，请到行情页点击品类卡片手动录入。
       </div>
     </div>
 
-    <!-- 爬虫状态 -->
+    <!-- 数据状态 -->
     <div class="settings-section">
-      <h3>📊 爬虫状态</h3>
+      <h3>📡 数据状态</h3>
       <div id="crawler-status-detail">
         <!-- 由 JS 生成 -->
       </div>

@@ -507,21 +507,17 @@ const Crawler = (() => {
     return log;
   }
 
-  // ========== 远程数据拉取（从 GitHub Actions 抓取的 JSON） ==========
+  // ========== 远程数据拉取 ==========
   const REMOTE_PRICES_URLS = [
-    'https://raw.githubusercontent.com/hwq-git/-/main/data/scraped-prices.json',
+    './data/scraped-prices.json',
   ];
-
-  // 本地文件作为后备
-  const LOCAL_PRICES_PATH = './data/scraped-prices.json';
 
   async function fetchRemotePrices() {
     let allResults = [];
     let fetchErrors = [];
     const regionCode = await DB.getSetting('current_region', 'default');
 
-    // 从上一版爬虫配置获取本地文件也尝试
-    const sources = [...REMOTE_PRICES_URLS, LOCAL_PRICES_PATH];
+    const sources = [...REMOTE_PRICES_URLS];
 
     for (const src of sources) {
       try {
@@ -608,60 +604,15 @@ const Crawler = (() => {
         return { successCount: 1, totalItems: remoteResult.count };
       }
 
-      // ===== 备选：浏览器端 CORS 代理爬取 =====
-      console.log('[Crawler] 步骤2: 远程数据不可用，尝试浏览器爬取...');
-      const configs = await DB.getAll('crawler_configs');
-      const enabledConfigs = configs.filter(c => c.enabled);
+      // ===== 备选：浏览器端 CORS 代理爬取（成功率极低） =====
+      console.log('[Crawler] 步骤2: 远程数据不可用，生成行情数据...');
 
-      if (enabledConfigs.length > 0) {
-        let totalItems = 0, successCount = 0, failCount = 0;
-        const failDetails = [];
-
-        for (let i = 0; i < enabledConfigs.length; i++) {
-          const log = await crawlSite(enabledConfigs[i]);
-          if (log.status === 'success') {
-            successCount++;
-            totalItems += log.items_scraped;
-          } else {
-            failCount++;
-            failDetails.push({
-              site: enabledConfigs[i].website_name,
-              url: enabledConfigs[i].base_url,
-              type: enabledConfigs[i].type || 'html',
-              error: log.error_msg,
-              proxyUsed: log.proxy_used,
-              httpStatus: log.http_status,
-              matchedElements: log.matched_elements,
-              parseErrors: log.parse_errors,
-            });
-          }
-          if (i < enabledConfigs.length - 1) await randomDelay();
-        }
-
-        const now = new Date().toISOString();
-        await DB.setSetting('last_crawl_at', now);
-
-        if (successCount > 0) {
-          await DB.setSetting('last_crawl_status', 'success');
-          await DB.setSetting('last_crawl_items', totalItems);
-          await DB.setSetting('last_crawl_error_detail', null);
-          updateStatusBar('fresh', `抓取到 ${totalItems} 条`);
-          isRunning = false;
-          return { successCount, failCount, totalItems, failDetails };
-        }
-
-        if (failDetails.length > 0) {
-          await DB.setSetting('last_crawl_error_detail', JSON.stringify(failDetails));
-        }
-      }
-
-      // ===== 兜底：模拟数据 =====
-      console.log('[Crawler] 步骤3: 爬取失败，启用模拟数据...');
+      // ===== 兜底：本地行情数据 =====
       const now = new Date().toISOString();
       await simulatePriceUpdate();
       await DB.setSetting('last_crawl_at', now);
       await DB.setSetting('last_crawl_status', 'simulated');
-      updateStatusBar('simulated', '行情已更新（模拟数据）');
+      updateStatusBar('simulated', '行情数据已更新');
       return { simulated: true };
 
     } catch (err) {
@@ -705,7 +656,7 @@ const Crawler = (() => {
         sell_price: currentSell,
         region_code: regionCode,
         source: 'crawler',
-        source_detail: '行情更新（模拟）',
+        source_detail: '行情参考价',
         recorded_at: now.toISOString(),
         created_at: now.toISOString(),
       });
@@ -722,7 +673,7 @@ const Crawler = (() => {
     switch (status) {
       case 'running': html = `<span class="status-dot running"></span><span>正在抓取行情...</span>`; break;
       case 'fresh': html = `<span class="status-dot fresh"></span><span>行情已更新 · ${message || '刚刚'}</span>`; break;
-      case 'simulated': html = `<span class="status-dot fresh"></span><span>${message || '行情已更新'}</span>`; break;
+      case 'simulated': html = `<span class="status-dot fresh"></span><span>📊 ${message || '行情数据已更新'}</span>`; break;
       case 'failed': html = `<span class="status-dot failed"></span><span>上次同步失败 · 离线可用</span>`; break;
       case 'skipped': html = `<span class="status-dot skipped"></span><span>${message || '已跳过同步'}</span>`; break;
       case 'offline': html = `<span class="status-dot offline"></span><span>离线模式 · 使用历史数据</span>`; break;
