@@ -157,7 +157,7 @@ function generateSeedPrices() {
 
 // ==================== 内置爬虫规则（后备方案） ====================
 const CRAWLER_RULES = {
-  version: '1.0.1',
+  version: '1.0.2',
   updated_at: new Date().toISOString(),
   sites: [
     {
@@ -197,13 +197,25 @@ async function initSeedData() {
     // 加时间戳防止缓存
     const resp = await fetch('./data/crawler-rules.json?v=' + Date.now());
     if (!resp.ok) {
-      throw new Error(`HTTP ${resp.status}`);
+      throw new Error(`HTTP ${resp.status} - 无法加载爬虫规则文件`);
     }
-    externalRules = await resp.json();
-    console.log('[Seed] ✅ 外部爬虫规则加载成功:', externalRules.version);
+    const text = await resp.text();
+    try {
+      externalRules = JSON.parse(text);
+    } catch (parseErr) {
+      throw new Error(`JSON解析失败: ${parseErr.message}（请检查 data/crawler-rules.json 是否包含 // 注释或尾随逗号）`);
+    }
+    // 验证规则格式
+    if (!externalRules.sites || !Array.isArray(externalRules.sites)) {
+      throw new Error('规则格式错误：缺少 sites 数组');
+    }
+    console.log(`[Seed] ✅ 外部爬虫规则加载成功: v${externalRules.version}, ${externalRules.sites.length}个站点`);
+    externalRules.sites.forEach((site, i) => {
+      console.log(`  [${i + 1}] ${site.name}: ${site.baseUrl}`);
+    });
   } catch (e) {
     loadError = e.message;
-    console.warn('[Seed] ⚠️ 外部规则加载失败，使用内置规则:', e.message);
+    console.warn('[Seed] ⚠️ 外部规则加载失败，回退到内置规则:', e.message);
   }
 
   // ---------- 第2步：确定最终使用的规则 ----------
@@ -257,18 +269,15 @@ async function initSeedData() {
     await DB.setSetting('seed_initialized', true);
   }
 
-  // ---------- 第4步：检查爬虫配置是否需要更新 ----------
-  // 逻辑：首次初始化、版本号变化、或外部JSON有更新时，都重写爬虫配置
-  const needUpdateRules = !initialized || seedVersion !== currentVersion || lastRulesVersion !== currentVersion;
+  // ---------- 第4步：同步爬虫配置到数据库 ----------
+  // 核心逻辑：只要外部JSON加载成功，每次启动都全量同步爬虫配置
+  // 这样用户改了 crawler-rules.json 刷新就生效，不需要手动改版本号
 
-  if (needUpdateRules) {
-    console.log(`[Seed] 🔄 更新爬虫配置: ${lastRulesVersion} → ${currentVersion}`);
+  if (externalRules) {
+    console.log(`[Seed] 🔄 同步爬虫配置（来源：外部JSON v${currentVersion}）...`);
 
-    // 验证规则格式
-    if (!rules.sites || !Array.isArray(rules.sites)) {
-      console.error('[Seed] ❌ 爬虫规则格式错误，缺少 sites 数组');
-      return false;
-    }
+    // 先清空旧配置（处理站点增减/改名的情况）
+    await DB.clear('crawler_configs');
 
     const crawlerConfigs = rules.sites.map((site, i) => ({
       id: `crawler_${i}`,
@@ -276,7 +285,7 @@ async function initSeedData() {
       base_url: site.baseUrl,
       css_selector: site.listSelector,
       fields: JSON.stringify(site.fields),
-      enabled: site.enabled !== false, // 默认 true
+      enabled: site.enabled !== false,
       interval_minutes: site.intervalMinutes || 120,
       last_success_at: null,
       last_error: null,
@@ -284,27 +293,44 @@ async function initSeedData() {
     }));
 
     await DB.bulkPut('crawler_configs', crawlerConfigs);
-
-    // 更新版本记录
-    await DB.setSetting('seed_version', currentVersion);
     await DB.setSetting('last_crawler_rules_version', currentVersion);
+    await DB.setSetting('crawler_rules_source', 'external_json');
 
-    // 记录外部/内置来源
-    await DB.setSetting('crawler_rules_source', externalRules ? 'external_json' : 'builtin');
+    console.log(`[Seed] ✅ 爬虫配置已同步: ${rules.sites.length} 个站点`);
+    rules.sites.forEach((site, i) => {
+      console.log(`  [${i + 1}] ${site.name} → ${site.baseUrl} ${site.enabled !== false ? '✓' : '✗'}`);
+    });
+  } else if (!initialized || lastRulesVersion !== currentVersion) {
+    // 外部JSON加载失败 + 首次安装或内置规则版本变化，用内置规则初始化
+    console.log(`[Seed] 🔄 初始化爬虫配置（来源：内置规则 v${currentVersion}）...`);
 
-    console.log(`[Seed] ✅ 爬虫配置已更新: ${rules.sites.length} 个站点`);
+    await DB.clear('crawler_configs');
+    const crawlerConfigs = rules.sites.map((site, i) => ({
+      id: `crawler_${i}`,
+      website_name: site.name,
+      base_url: site.baseUrl,
+      css_selector: site.listSelector,
+      fields: JSON.stringify(site.fields),
+      enabled: site.enabled !== false,
+      interval_minutes: site.intervalMinutes || 120,
+      last_success_at: null,
+      last_error: null,
+      version: currentVersion,
+    }));
 
-    if (!initialized) {
-      const priceCount = (await DB.getAll('prices')).length;
-      console.log(`[Seed] 🎉 首次初始化完成：${CATEGORIES.length}个品类，${priceCount}条价格记录`);
-    } else {
-      // 非首次但规则更新了，给用户一个提示
-      console.log(`[Seed] 📢 检测到爬虫规则更新，已自动热重载`);
-    }
+    await DB.bulkPut('crawler_configs', crawlerConfigs);
+    await DB.setSetting('last_crawler_rules_version', currentVersion);
+    await DB.setSetting('crawler_rules_source', 'builtin');
 
-    return true;
+    console.log(`[Seed] ✅ 爬虫配置已初始化: ${rules.sites.length} 个站点`);
+  } else {
+    console.log(`[Seed] ⏭️ 外部JSON不可用，保留已有爬虫配置 (v${lastRulesVersion})`);
   }
 
-  console.log(`[Seed] ⏭️ 种子数据已是最新版本 (${currentVersion})，跳过更新`);
-  return false;
+  if (!initialized) {
+    const priceCount = (await DB.getAll('prices')).length;
+    console.log(`[Seed] 🎉 首次初始化完成：${CATEGORIES.length}个品类，${priceCount}条价格记录`);
+  }
+
+  return true;
 }

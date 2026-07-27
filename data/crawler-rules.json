@@ -1,7 +1,7 @@
 {
-  "_comment": "爬虫规则配置文件 - 网站改版后更新此文件即可",
-  "version": "1.0.0",
-  "updated_at": "2025-07-26",
+  "_comment": "爬虫规则配置文件 - 网站改版后更新此文件即可，刷新页面自动生效",
+  "version": "1.0.3",
+  "updated_at": "2026-07-27",
   "sites": [
     {
       "name": "废品之家",
@@ -17,11 +17,11 @@
       "enabled": true
     },
     {
-      "name": "Feijiu网",
-      "baseUrl": "http://apps.feijiu.net/",
-      "listSelector": ".hq-list .hq-item",      // ⚠️ 需根据实际页面结构调整
+      "name": "Feijiu网|四川",
+      "baseUrl": "https://www.feijiu.net/fz/sichuan/",
+      "listSelector": ".hq-list .hq-item",
       "fields": {
-        "category":".hq-name",
+        "category": ".hq-name",
         "price": ".hq-price",
         "change": ".hq-change",
         "date": ".hq-date"
@@ -32,7 +32,7 @@
     {
       "name": "91再生",
       "baseUrl": "https://jiage.zz91.com/",
-      "listSelector": ".market-list .item",     // ⚠️ 需根据实际页面结构调整
+      "listSelector": ".market-list .item",
       "fields": {
         "category": ".title",
         "price": ".price",

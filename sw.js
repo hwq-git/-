@@ -2,7 +2,7 @@
  * Service Worker - 离线缓存
  * 缓存所有静态资源，断网时仍可使用
  */
-const CACHE_NAME = 'feipin-v1.0.0';
+const CACHE_NAME = 'feipin-v1.0.2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -59,6 +59,20 @@ self.addEventListener('fetch', (event) => {
   if (isCrawlerRequest) {
     // 爬虫请求：网络优先，不缓存
     event.respondWith(fetch(event.request).catch(() => new Response('', { status: 503 })));
+    return;
+  }
+
+  // crawler-rules.json 走网络优先，确保总是获取最新规则文件
+  if (url.pathname.endsWith('crawler-rules.json')) {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          return response;
+        })
+        .catch(() => caches.match(event.request).then(c => c || new Response('{}', { status: 200 })))
+    );
     return;
   }
 
