@@ -204,6 +204,19 @@ button { cursor: pointer; border: none; background: none; color: inherit; }
 .price-value.down { color: var(--down); }
 .price-value.flat { color: var(--text); }
 
+.price-unit-ton {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-light);
+  margin-left: 4px;
+}
+.price-kg {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
 .price-change {
   display: inline-flex;
   align-items: center;

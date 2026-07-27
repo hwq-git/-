@@ -197,14 +197,15 @@
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>收购价 (元)</label>
-            <input type="number" id="price-buy" placeholder="如 1450" step="any">
+            <label>收购价 (元/吨)</label>
+            <input type="number" id="price-buy" placeholder="如 1450" step="any" oninput="App.showPriceKgHint()">
           </div>
           <div class="form-group">
-            <label>卖出价 (元)</label>
-            <input type="number" id="price-sell" placeholder="如 1550" step="any">
+            <label>卖出价 (元/吨)</label>
+            <input type="number" id="price-sell" placeholder="如 1550" step="any" oninput="App.showPriceKgHint()">
           </div>
         </div>
+        <div id="price-kg-hint" class="compare-hint"></div>
         <div class="form-group">
           <label>备注</label>
           <input type="text" id="price-note" placeholder="可选，如：老张送货">

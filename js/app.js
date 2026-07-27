@@ -128,6 +128,17 @@ const App = (() => {
 
       const isFav = favoriteIds.has(cat.id);
       const timeAgo = getTimeAgo(latest.recorded_at);
+      const isTonUnit = cat.unit === '元/吨';
+
+      const buyPriceHtml = isTonUnit
+        ? `<div class="price-value ${changeClass}">${latest.buy_price.toLocaleString()}<span class="price-unit-ton">元/吨</span></div>
+           <div class="price-kg">≈ ${(latest.buy_price / 1000).toFixed(2)} 元/kg</div>`
+        : `<div class="price-value ${changeClass}">${latest.buy_price.toLocaleString()}<span class="price-unit-ton">${cat.unit}</span></div>`;
+
+      const sellPriceHtml = isTonUnit
+        ? `<div class="price-value ${changeClass}">${latest.sell_price.toLocaleString()}<span class="price-unit-ton">元/吨</span></div>
+           <div class="price-kg">≈ ${(latest.sell_price / 1000).toFixed(2)} 元/kg</div>`
+        : `<div class="price-value ${changeClass}">${latest.sell_price.toLocaleString()}<span class="price-unit-ton">${cat.unit}</span></div>`;
 
       cards.push(`
         <div class="price-card ${isFav ? 'favorited' : ''}" onclick="App.showPriceDetail('${cat.id}')">
@@ -143,11 +154,11 @@ const App = (() => {
           <div class="price-card-prices">
             <div class="price-item">
               <div class="price-label">收购价</div>
-              <div class="price-value ${changeClass}">${latest.buy_price.toLocaleString()}</div>
+              ${buyPriceHtml}
             </div>
             <div class="price-item">
               <div class="price-label">卖出价</div>
-              <div class="price-value ${changeClass}">${latest.sell_price.toLocaleString()}</div>
+              ${sellPriceHtml}
             </div>
           </div>
           <div class="price-card-footer">
@@ -506,12 +517,37 @@ const App = (() => {
     document.getElementById('price-sell').value = '';
     document.getElementById('price-note').value = '';
     document.getElementById('price-compare-hint').classList.remove('show');
+    const kgHint = document.getElementById('price-kg-hint');
+    if (kgHint) { kgHint.innerHTML = ''; kgHint.classList.remove('show'); }
 
     modal.classList.remove('hidden');
 
     if (select.value) {
       await checkPriceCompare();
     }
+  }
+
+  function showPriceKgHint() {
+    const buyInput = document.getElementById('price-buy');
+    const sellInput = document.getElementById('price-sell');
+    const hint = document.getElementById('price-kg-hint');
+    if (!hint) return;
+
+    const buyVal = parseFloat(buyInput?.value);
+    const sellVal = parseFloat(sellInput?.value);
+
+    if (!buyVal && !sellVal) {
+      hint.classList.remove('show');
+      return;
+    }
+
+    let text = '';
+    if (buyVal) text += `收购: ≈ ${(buyVal / 1000).toFixed(2)} 元/kg`;
+    if (buyVal && sellVal) text += '&nbsp;&nbsp;|&nbsp;&nbsp;';
+    if (sellVal) text += `卖出: ≈ ${(sellVal / 1000).toFixed(2)} 元/kg`;
+
+    hint.innerHTML = text;
+    hint.className = 'compare-hint show';
   }
 
   async function checkPriceCompare() {
@@ -843,6 +879,7 @@ const App = (() => {
     renderMarket, renderLedger, renderTrendChart, setTrendPeriod,
     renderSettings, renderCrawlerStatus, updateSetting,
     showAuthModal, saveAuth, testAuth,
+    showPriceKgHint,
   };
 })();
 
