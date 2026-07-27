@@ -1,45 +1,68 @@
 {
-  "_comment": "爬虫规则配置文件 - 网站改版后更新此文件即可，刷新页面自动生效",
-  "version": "1.0.3",
-  "updated_at": "2026-07-27",
+  "version": "1.0.7",
+  "updated_at": "2026-07-27T12:30:00+08:00",
   "sites": [
     {
       "name": "废品之家",
+      "type": "html",
       "baseUrl": "https://www.feipinzhijia.com/hangqing/",
       "listSelector": ".price-list li",
-      "fields": {
-        "category": ".name",
-        "price": ".price-value",
-        "change": ".change",
-        "date": ".date"
+      "fields": { "category": ".name", "price": ".price-value", "change": ".change", "date": ".date" },
+      "auth": {
+        "required": false,
+        "description": "无需登录"
       },
       "intervalMinutes": 120,
       "enabled": true
     },
     {
-      "name": "Feijiu网|四川",
-      "baseUrl": "https://www.feijiu.net/fz/sichuan/",
-      "listSelector": ".hq-list .hq-item",
-      "fields": {
-        "category": ".hq-name",
-        "price": ".hq-price",
-        "change": ".hq-change",
-        "date": ".hq-date"
+      "name": "Feijiu网",
+      "type": "api",
+      "baseUrl": "https://apps.feijiu.net/api/price/list?page=1",
+      "apiPath": "data.list",
+      "fields": { "category": "name", "price": "price", "change": "change" },
+      "auth": {
+        "required": true,
+        "description": "需要登录后的 Cookie",
+        "fields": [
+          { "key": "Cookie", "label": "Cookie", "placeholder": "sessionid=xxx; token=xxx", "type": "textarea" },
+          { "key": "Authorization", "label": "Token (可选)", "placeholder": "Bearer xxx", "type": "text" }
+        ]
       },
       "intervalMinutes": 180,
       "enabled": true
     },
     {
       "name": "91再生",
+      "type": "html",
       "baseUrl": "https://jiage.zz91.com/",
-      "listSelector": ".market-list .item",
-      "fields": {
-        "category": ".title",
-        "price": ".price",
-        "change": ".trend",
-        "date": ".time"
+      "listSelector": ".price-table tr",
+      "fields": { "category": "td:nth-child(1)", "price": "td:nth-child(2)" },
+      "auth": {
+        "required": true,
+        "description": "需要登录 Cookie",
+        "fields": [
+          { "key": "Cookie", "label": "Cookie", "placeholder": "复制浏览器中的完整 Cookie", "type": "textarea" }
+        ]
       },
       "intervalMinutes": 240,
+      "enabled": true
+    },
+    {
+      "name": "Feijiu网(四川省绵阳市废旧金属)",
+      "type": "html",
+      "baseUrl": "https://www.feijiu.net/mianyang-FeiJinShu/",
+      "listSelector": ".hq-list .hq-item",
+      "fields": { "category": ".hq-name", "price": ".hq-price", "change": ".hq-change", "date": ".hq-date" },
+      "auth": {
+        "required": true,
+        "description": "需要登录后的 Cookie（去设置→站点认证填写）",
+        "fields": [
+          { "key": "Cookie", "label": "Cookie", "placeholder": "sessionid=xxx; token=xxx", "type": "textarea" },
+          { "key": "Authorization", "label": "Token (可选)", "placeholder": "Bearer xxx", "type": "text" }
+        ]
+      },
+      "intervalMinutes": 180,
       "enabled": true
     }
   ]

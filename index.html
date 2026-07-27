@@ -263,6 +263,24 @@
     </div>
   </div>
 
+  <!-- ===== 弹窗：站点认证配置 ===== -->
+  <div id="modal-auth" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>🔐 站点认证</h3>
+        <button class="close-btn" onclick="App.closeModal('modal-auth')">×</button>
+      </div>
+      <div class="modal-body" id="auth-modal-body">
+        <!-- 动态生成 -->
+      </div>
+      <div class="modal-footer">
+        <button class="cancel-btn" onclick="App.closeModal('modal-auth')">取消</button>
+        <button class="action-btn" onclick="App.testAuth()" style="background:#1a73e8;color:#fff;">🧪 测试连接</button>
+        <button class="confirm-btn" onclick="App.saveAuth()">保存</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== Toast 提示 ===== -->
   <div id="toast" class="toast" style="display:none;"></div>
 

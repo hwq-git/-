@@ -279,12 +279,18 @@ async function initSeedData() {
     // 先清空旧配置（处理站点增减/改名的情况）
     await DB.clear('crawler_configs');
 
+    // 在 initSeedData() 的 "更新爬虫配置" 段落里，替换原来的 crawlerConfigs 生成逻辑：
+
     const crawlerConfigs = rules.sites.map((site, i) => ({
       id: `crawler_${i}`,
       website_name: site.name,
       base_url: site.baseUrl,
-      css_selector: site.listSelector,
+      type: site.type || 'html',
+      css_selector: site.listSelector || '',
+      api_path: site.apiPath || '',
       fields: JSON.stringify(site.fields),
+      auth: JSON.stringify(site.auth || { required: false }),  // 新增
+      user_auth: '{}',  // 新增：用户填的认证信息，默认空对象
       enabled: site.enabled !== false,
       interval_minutes: site.intervalMinutes || 120,
       last_success_at: null,
@@ -292,6 +298,7 @@ async function initSeedData() {
       version: currentVersion,
     }));
 
+   
     await DB.bulkPut('crawler_configs', crawlerConfigs);
     await DB.setSetting('last_crawler_rules_version', currentVersion);
     await DB.setSetting('crawler_rules_source', 'external_json');

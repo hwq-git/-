@@ -1,28 +1,19 @@
 /**
- * 手机端爬虫引擎
- * - CORS代理抓取（浏览器环境适配）
- * - 随机User-Agent轮换
- * - 请求间隔3~8秒随机延迟
- * - 失败重试，自动切换备选网站
- * - 智能节电策略（WiFi + 电量检测）
- * - 增强日志：详细记录代理尝试、HTTP状态、CSS匹配数、解析错误，方便调试
+ * 手机端爬虫引擎（增强版）
+ * 支持：HTML解析 / API JSON解析 / Cookie注入
  */
 
 const Crawler = (() => {
-  // CORS 代理列表（轮换使用）
   const CORS_PROXIES = [
     { name: 'allorigins', fn: (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}` },
     { name: 'corsproxy',  fn: (url) => `https://corsproxy.io/?${encodeURIComponent(url)}` },
     { name: 'codetabs',   fn: (url) => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}` },
   ];
 
-  // 随机 User-Agent
   const USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15',
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   ];
 
   let isRunning = false;
@@ -36,22 +27,19 @@ const Crawler = (() => {
     return new Promise(resolve => setTimeout(resolve, min + Math.random() * (max - min)));
   }
 
-  // 检测网络状态
+  // ========== 网络/电量检测（不变）==========
   async function checkNetwork() {
-    if (!navigator.onLine) {
-      return { ok: false, reason: '设备离线' };
-    }
+    if (!navigator.onLine) return { ok: false, reason: '设备离线' };
     const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     const wifiOnly = await DB.getSetting('crawler_wifi_only', true);
     if (wifiOnly && connection) {
-      if (connection.type === 'cellular' && connection.type !== 'wifi') {
+      if (connection.type === 'cellular') {
         return { ok: false, reason: '非WiFi网络，已跳过（节电模式）' };
       }
     }
     return { ok: true };
   }
 
-  // 检测电量
   async function checkBattery() {
     try {
       const battery = await navigator.getBattery();
@@ -65,20 +53,22 @@ const Crawler = (() => {
     }
   }
 
-  /**
-   * 通过代理抓取网页（增强版）
-   * 返回详细调试信息，包括每个代理的尝试结果
-   */
-  async function fetchPage(url) {
+  // ========== 增强版 fetchPage：支持自定义 headers（含Cookie） ==========
+  async function fetchPage(url, customHeaders = {}, authConfig = null) {
     const proxyAttempts = [];
     let lastError = null;
+
+    // 合并请求头：随机UA + 用户配置的Cookie/Token
+    const headers = {
+      'User-Agent': getRandomUA(),
+      ...customHeaders,
+    };
 
     for (let i = 0; i < CORS_PROXIES.length; i++) {
       const proxy = CORS_PROXIES[i];
       const proxyUrl = proxy.fn(url);
       const attempt = {
         proxy: proxy.name,
-        proxyUrl: proxyUrl,
         status: 'pending',
         httpStatus: null,
         htmlLength: 0,
@@ -93,7 +83,7 @@ const Crawler = (() => {
 
         const response = await fetch(proxyUrl, {
           signal: controller.signal,
-          headers: { 'User-Agent': getRandomUA() },
+          headers: headers,   // ✅ 带上自定义Cookie/Token
         });
 
         clearTimeout(timeoutId);
@@ -102,36 +92,52 @@ const Crawler = (() => {
 
         if (!response.ok) {
           attempt.status = 'failed';
-          attempt.error = `HTTP ${response.status} ${response.statusText}`;
+          attempt.error = `HTTP ${response.status}`;
           proxyAttempts.push(attempt);
-          console.warn(`[Crawler] 代理 ${proxy.name} 返回 HTTP ${response.status}`);
           if (i < CORS_PROXIES.length - 1) await randomDelay(1000, 2000);
           continue;
         }
 
-        const html = await response.text();
-        attempt.htmlLength = html.length;
+        const text = await response.text();
+        attempt.htmlLength = text.length;
 
-        if (!html || html.length < 100) {
+        if (!text || text.length < 50) {
           attempt.status = 'failed';
-          attempt.error = `返回内容为空或过短 (${html.length} bytes)`;
+          attempt.error = `内容过短 (${text.length} bytes)`;
           proxyAttempts.push(attempt);
-          console.warn(`[Crawler] 代理 ${proxy.name} 内容过短`);
           if (i < CORS_PROXIES.length - 1) await randomDelay(1000, 2000);
           continue;
         }
 
-        // 成功
+        // 检测是否被重定向到登录页
+        const isLoginPage = /登录|login|请登录|请先登录|sign in/i.test(text.slice(0, 2000)) &&
+                           text.length < 5000; // 登录页通常很短
+
+        if (isLoginPage) {
+          attempt.status = 'failed';
+          // 增强提示：区分是否需要用户提供认证
+          if (authConfig && authConfig.required) {
+            attempt.error = '返回登录页（Cookie失效或未提供，请去"设置→站点认证"填写）';
+          } else {
+            attempt.error = '返回登录页（Cookie失效或未提供）';
+          }
+          proxyAttempts.push(attempt);
+          console.warn(`[Crawler] 代理 ${proxy.name} 返回登录页${authConfig && authConfig.required ? '（站点需要认证）' : ''}，Cookie可能失效`);
+          if (i < CORS_PROXIES.length - 1) await randomDelay(1000, 2000);
+          continue;
+        }
+
         attempt.status = 'success';
         proxyAttempts.push(attempt);
 
         return {
           success: true,
-          html: html,
+          text: text,          // 统一叫 text，可能是HTML也可能是JSON字符串
+          isJson: text.trim().startsWith('{') || text.trim().startsWith('['),
           proxyUsed: proxy.name,
-          proxyAttempts: proxyAttempts,
+          proxyAttempts,
           httpStatus: response.status,
-          htmlLength: html.length,
+          contentLength: text.length,
           errorDetail: null,
         };
 
@@ -140,89 +146,184 @@ const Crawler = (() => {
         attempt.error = err.message || String(err);
         proxyAttempts.push(attempt);
         lastError = err;
-        console.warn(`[Crawler] 代理 ${proxy.name} 失败: ${err.message}`);
         if (i < CORS_PROXIES.length - 1) await randomDelay(1000, 2000);
       }
     }
 
-    // 所有代理均失败
     const errorDetail = proxyAttempts.map(a =>
-      `[${a.proxy}] ${a.status.toUpperCase()}${a.httpStatus ? ' HTTP:' + a.httpStatus : ''}${a.error ? ' | ' + a.error : ''} (len:${a.htmlLength})`
+      `[${a.proxy}] ${a.status.toUpperCase()}${a.httpStatus ? ' HTTP:' + a.httpStatus : ''}${a.error ? ' | ' + a.error : ''}`
     ).join(' → ');
 
     return {
       success: false,
-      html: null,
+      text: null,
+      isJson: false,
       proxyUsed: null,
-      proxyAttempts: proxyAttempts,
+      proxyAttempts,
       httpStatus: null,
-      htmlLength: 0,
+      contentLength: 0,
       errorDetail: errorDetail || (lastError ? lastError.message : '所有代理均失败'),
     };
   }
 
-  /**
-   * 解析HTML，提取价格数据（增强版）
-   * 返回解析结果 + 调试信息（匹配元素数、解析错误详情）
-   */
-  function parsePrices(html, rule) {
+  // ========== 增强版 parsePrices：支持 HTML 和 API 两种模式 ==========
+  function parsePrices(fetchResult, config) {
     const parseErrors = [];
-    let matchedElements = 0;
+    const type = config.type || 'html';
 
+    // ---------- API 模式：直接解析 JSON ----------
+    if (type === 'api' || fetchResult.isJson) {
+      try {
+        let json = JSON.parse(fetchResult.text);
+
+        // 如果配置了 apiPath，按路径提取数组（如 "data.list"）
+        if (config.api_path) {
+          const parts = config.api_path.split('.');
+          for (const part of parts) {
+            if (json && json[part] !== undefined) {
+              json = json[part];
+            } else {
+              return {
+                results: [],
+                matchedElements: 0,
+                parseErrors: [{ index: -1, error: `apiPath "${config.api_path}" 未找到` }],
+                errorDetail: `JSON路径 "${config.api_path}" 解析失败`,
+              };
+            }
+          }
+        }
+
+        if (!Array.isArray(json)) {
+          return {
+            results: [],
+            matchedElements: 0,
+            parseErrors: [{ index: -1, error: 'API返回不是数组' }],
+            errorDetail: `API返回类型: ${typeof json}`,
+          };
+        }
+
+        const results = [];
+        let fields = config.fields;
+        if (typeof fields === 'string') fields = JSON.parse(fields);
+
+        json.forEach((item, idx) => {
+          try {
+            const name = item[fields.category];
+            const priceText = String(item[fields.price] || '');
+            const changeText = String(item[fields.change] || '');
+            const dateText = String(item[fields.date] || '');
+
+            if (!name || !priceText) {
+              parseErrors.push({ index: idx, error: '缺少品名或价格', raw: JSON.stringify(item).slice(0, 100) });
+              return;
+            }
+
+            const priceMatch = priceText.match(/[\d,]+\.?\d*/);
+            if (!priceMatch) {
+              parseErrors.push({ index: idx, error: `无法解析价格: ${priceText}`, raw: priceText });
+              return;
+            }
+            const price = parseFloat(priceMatch[0].replace(/,/g, ''));
+
+            const matchedCategory = matchCategory(name);
+            if (!matchedCategory) {
+              parseErrors.push({ index: idx, error: `品名未匹配: ${name}`, raw: name });
+              return;
+            }
+
+            let change = 0;
+            if (changeText) {
+              const numMatch = changeText.match(/-?[\d,.]+/);
+              if (numMatch) change = parseFloat(numMatch[0].replace(/,/g, ''));
+            }
+
+            results.push({
+              category_id: matchedCategory.id,
+              category_name: matchedCategory.name,
+              buy_price: Math.round(price * 0.97),
+              sell_price: Math.round(price * 1.01),
+              change: change,
+              source_detail: config.website_name,
+              date_text: dateText,
+            });
+          } catch (e) {
+            parseErrors.push({ index: idx, error: e.message, raw: JSON.stringify(item).slice(0, 100) });
+          }
+        });
+
+        return {
+          results,
+          matchedElements: json.length,
+          parseErrors,
+          errorDetail: `API返回 ${json.length} 条，成功解析 ${results.length} 条`,
+        };
+
+      } catch (e) {
+        return {
+          results: [],
+          matchedElements: 0,
+          parseErrors: [{ index: -1, error: 'JSON解析失败: ' + e.message }],
+          errorDetail: `JSON解析异常: ${e.message}`,
+        };
+      }
+    }
+
+    // ---------- HTML 模式：DOM解析（和之前一样，略增强）----------
     try {
       const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      const items = doc.querySelectorAll(rule.listSelector || rule.css_selector);
-      matchedElements = items.length;
+      const doc = parser.parseFromString(fetchResult.text, 'text/html');
+      const items = doc.querySelectorAll(config.css_selector || config.listSelector);
+      const matchedElements = items.length;
       const results = [];
 
       if (matchedElements === 0) {
+        // 额外检测：是不是被反爬或登录拦截了
+        const bodyText = doc.body ? doc.body.innerText.slice(0, 500) : '';
+        const isBlocked = /验证码|访问频繁|请稍后|403|Forbidden|登录|login/i.test(bodyText);
+
         return {
           results: [],
           matchedElements: 0,
           parseErrors: [],
-          errorDetail: `CSS选择器 "${rule.listSelector || rule.css_selector}" 未匹配到任何元素，页面结构可能已变更`,
+          errorDetail: isBlocked
+            ? `CSS选择器未匹配，页面疑似被拦截: "${bodyText.slice(0, 80)}"`
+            : `CSS选择器 "${config.css_selector}" 未匹配到任何元素`,
         };
       }
 
+      let fields = config.fields;
+      if (typeof fields === 'string') fields = JSON.parse(fields);
+
       items.forEach((item, idx) => {
         try {
-          let fields = rule.fields;
-          if (typeof fields === 'string') fields = JSON.parse(fields);
+          const getText = (sel) => {
+            const el = item.querySelector(sel);
+            return el ? el.textContent.trim() : '';
+          };
 
-          const getCategoryText = (el) => el ? el.textContent.trim() : '';
-
-          const nameEl = item.querySelector(fields.category);
-          const priceEl = item.querySelector(fields.price);
-          const changeEl = item.querySelector(fields.change);
-          const dateEl = item.querySelector(fields.date);
-
-          const name = getCategoryText(nameEl);
-          const priceText = getCategoryText(priceEl);
-          const changeText = getCategoryText(changeEl);
-          const dateText = getCategoryText(dateEl);
+          const name = getText(fields.category);
+          const priceText = getText(fields.price);
+          const changeText = getText(fields.change);
+          const dateText = getText(fields.date);
 
           if (!name || !priceText) {
-            parseErrors.push({ index: idx, error: '缺少品名或价格', rawText: item.textContent.trim().slice(0, 80) });
+            parseErrors.push({ index: idx, error: '缺少品名或价格', raw: item.textContent.trim().slice(0, 80) });
             return;
           }
 
-          // 解析价格数字
           const priceMatch = priceText.match(/[\d,]+\.?\d*/);
           if (!priceMatch) {
-            parseErrors.push({ index: idx, error: `无法从 "${priceText}" 解析价格`, rawText: item.textContent.trim().slice(0, 80) });
+            parseErrors.push({ index: idx, error: `无法解析价格: ${priceText}`, raw: priceText });
             return;
           }
           const price = parseFloat(priceMatch[0].replace(/,/g, ''));
 
-          // 匹配品类
           const matchedCategory = matchCategory(name);
           if (!matchedCategory) {
-            parseErrors.push({ index: idx, error: `品名 "${name}" 未匹配到已知品类`, rawText: item.textContent.trim().slice(0, 80) });
+            parseErrors.push({ index: idx, error: `品名未匹配: ${name}`, raw: name });
             return;
           }
 
-          // 解析涨跌
           let change = 0;
           if (changeText) {
             if (changeText.includes('↑') || changeText.includes('涨') || changeText.includes('+')) {
@@ -240,23 +341,19 @@ const Crawler = (() => {
             buy_price: Math.round(price * 0.97),
             sell_price: Math.round(price * 1.01),
             change: change,
-            source_detail: rule.website_name || rule.website_name,
+            source_detail: config.website_name,
             date_text: dateText,
           });
         } catch (e) {
-          parseErrors.push({ index: idx, error: e.message, rawText: item.textContent.trim().slice(0, 80) });
+          parseErrors.push({ index: idx, error: e.message, raw: item.textContent.trim().slice(0, 80) });
         }
       });
-
-      const errorDetail = parseErrors.length > 0
-        ? `匹配到 ${matchedElements} 个元素，成功解析 ${results.length} 条，失败 ${parseErrors.length} 条`
-        : `匹配到 ${matchedElements} 个元素，全部解析成功 (${results.length} 条)`;
 
       return {
         results,
         matchedElements,
         parseErrors,
-        errorDetail,
+        errorDetail: `匹配 ${matchedElements} 个元素，解析成功 ${results.length} 条`,
       };
 
     } catch (e) {
@@ -269,9 +366,9 @@ const Crawler = (() => {
     }
   }
 
-  // 品名匹配
+  // 品名匹配（不变）
   function matchCategory(name) {
-    const lowerName = name.toLowerCase().replace(/\s/g, '');
+    const lowerName = String(name).toLowerCase().replace(/\s/g, '');
     for (const cat of CATEGORIES) {
       if (lowerName.includes(cat.name) || cat.name.includes(name)) {
         return cat;
@@ -280,10 +377,7 @@ const Crawler = (() => {
     return null;
   }
 
-  /**
-   * 爬取单个网站（增强版）
-   * 详细记录：代理尝试、HTTP状态、匹配元素数、解析错误
-   */
+  // ========== 爬取单个网站（增强版） ==========
   async function crawlSite(config) {
     const startTime = Date.now();
     const log = {
@@ -292,52 +386,84 @@ const Crawler = (() => {
       status: 'failed',
       items_scraped: 0,
       error_msg: '',
-      error_detail: null,      // 新增：详细错误JSON
-      proxy_used: null,        // 新增：最终使用的代理
-      http_status: null,       // 新增：HTTP状态码
-      matched_elements: 0,     // 新增：CSS匹配元素数
-      parse_errors: 0,         // 新增：解析错误数
+      error_detail: null,
+      proxy_used: null,
+      http_status: null,
+      matched_elements: 0,
+      parse_errors: 0,
       duration_ms: 0,
       crawled_at: new Date().toISOString(),
     };
 
     try {
-      console.log(`[Crawler] 正在爬取: ${config.website_name} (${config.base_url})`);
+      console.log(`[Crawler] 正在爬取: ${config.website_name} [${config.type || 'html'}] (${config.base_url})`);
 
-      // 1. 抓取页面
-      const fetchResult = await fetchPage(config.base_url);
+      // ---------- 解析站点认证配置 ----------
+      let siteAuth = null;
+      if (config.auth) {
+        try {
+          siteAuth = typeof config.auth === 'string' ? JSON.parse(config.auth) : config.auth;
+        } catch (e) {
+          console.warn('[Crawler] auth 配置解析失败:', e.message);
+        }
+      }
 
+      // 解析用户填入的认证信息（Cookie/Token）
+      let userAuth = {};
+      if (config.user_auth) {
+        try {
+          const raw = typeof config.user_auth === 'string' ? JSON.parse(config.user_auth) : config.user_auth;
+          userAuth = raw || {};
+        } catch (e) {
+          console.warn('[Crawler] user_auth 解析失败:', e.message);
+        }
+      }
+
+      // 检查是否需要认证但未提供有效凭据
+      if (siteAuth && siteAuth.required) {
+        const hasValidAuth = Object.keys(userAuth).some(k => {
+          const v = userAuth[k];
+          return v && String(v).trim().length > 3;
+        });
+        if (!hasValidAuth) {
+          log.error_msg = `需要认证（${siteAuth.description}），但未提供 Cookie/Token，请去"设置→站点认证"填写`;
+          log.error_detail = JSON.stringify({ stage: 'auth', reason: 'missing_credentials' });
+          throw new Error(log.error_msg);
+        }
+        console.log(`[Crawler] ${config.website_name}: 已携带用户认证 (${Object.keys(userAuth).filter(k => userAuth[k]).join(', ')})`);
+      }
+
+      // 构建请求头并抓取（传入 authConfig 用于增强登录页检测）
+      const customHeaders = { ...userAuth };
+
+      // 1. 抓取
+      const fetchResult = await fetchPage(config.base_url, customHeaders, siteAuth);
       log.proxy_used = fetchResult.proxyUsed;
       log.http_status = fetchResult.httpStatus;
 
       if (!fetchResult.success) {
         log.error_msg = fetchResult.errorDetail;
-        log.error_detail = JSON.stringify({
-          stage: 'fetch',
-          proxyAttempts: fetchResult.proxyAttempts,
-          errorDetail: fetchResult.errorDetail,
-        });
+        log.error_detail = JSON.stringify({ stage: 'fetch', proxyAttempts: fetchResult.proxyAttempts });
         throw new Error(fetchResult.errorDetail);
       }
 
-      // 2. 解析价格
-      const parseResult = parsePrices(fetchResult.html, config);
+      // 2. 解析
+      const parseResult = parsePrices(fetchResult, config);
       log.matched_elements = parseResult.matchedElements;
       log.parse_errors = parseResult.parseErrors.length;
 
-      if (parseResult.results.length === 0 && parseResult.matchedElements === 0) {
+      if (parseResult.results.length === 0) {
         log.error_msg = parseResult.errorDetail;
         log.error_detail = JSON.stringify({
           stage: 'parse',
-          htmlLength: fetchResult.htmlLength,
-          matchedElements: parseResult.matchedElements,
-          parseErrors: parseResult.parseErrors.slice(0, 10), // 最多存10条
-          errorDetail: parseResult.errorDetail,
+          isJson: fetchResult.isJson,
+          contentLength: fetchResult.contentLength,
+          parseErrors: parseResult.parseErrors.slice(0, 10),
         });
         throw new Error(parseResult.errorDetail);
       }
 
-      // 3. 保存价格数据
+      // 3. 入库
       const regionCode = await DB.getSetting('current_region', 'default');
       const priceRecords = parseResult.results.map(p => ({
         id: `crawl_${p.category_id}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
@@ -346,66 +472,50 @@ const Crawler = (() => {
         sell_price: p.sell_price,
         region_code: regionCode,
         source: 'crawler',
-        source_detail: config.website_name,   // ✅ 明确标记数据来源网站
+        source_detail: config.website_name,
         recorded_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
       }));
       await DB.bulkPut('prices', priceRecords);
 
-      // 4. 更新日志
       log.status = 'success';
       log.items_scraped = parseResult.results.length;
       log.duration_ms = Date.now() - startTime;
       log.error_detail = JSON.stringify({
         stage: 'success',
         proxyUsed: fetchResult.proxyUsed,
-        htmlLength: fetchResult.htmlLength,
-        matchedElements: parseResult.matchedElements,
-        parseErrors: parseResult.parseErrors.slice(0, 5),
+        contentLength: fetchResult.contentLength,
+        isJson: fetchResult.isJson,
       });
 
-      // 5. 更新爬虫配置
       await DB.put('crawler_configs', {
         ...config,
         last_success_at: new Date().toISOString(),
         last_error: null,
       });
 
-      console.log(`[Crawler] ${config.website_name}: 抓取到 ${parseResult.results.length} 条价格 (代理:${fetchResult.proxyUsed}, HTML:${fetchResult.htmlLength} bytes, 匹配:${parseResult.matchedElements})`);
+      console.log(`[Crawler] ${config.website_name}: ✅ ${parseResult.results.length} 条 (${fetchResult.isJson ? 'API' : 'HTML'}, 代理:${fetchResult.proxyUsed})`);
 
     } catch (err) {
       log.error_msg = err.message;
       log.duration_ms = Date.now() - startTime;
-
-      // 更新爬虫配置错误信息
-      await DB.put('crawler_configs', {
-        ...config,
-        last_error: err.message,
-      });
-
-      console.error(`[Crawler] ${config.website_name} 爬取失败:`, err.message);
+      await DB.put('crawler_configs', { ...config, last_error: err.message });
+      console.error(`[Crawler] ${config.website_name} ❌:`, err.message);
     }
 
-    // 记录日志
     await DB.put('crawl_logs', log);
     return log;
   }
 
-  // 执行一次完整的爬取
+  // ========== runCrawl / simulatePriceUpdate / 状态栏 / 定时器（基本不变）==========
   async function runCrawl(deep = false) {
-    if (isRunning) {
-      console.log('[Crawler] 爬虫正在运行中，跳过');
-      return { skipped: true };
-    }
-
+    if (isRunning) return { skipped: true };
     isRunning = true;
     updateStatusBar('running');
 
     try {
-      // 检查网络和电量
       const netCheck = await checkNetwork();
       if (!netCheck.ok) {
-        console.log(`[Crawler] ${netCheck.reason}`);
         await DB.setSetting('last_crawl_status', 'skipped');
         await DB.setSetting('last_crawl_skip_reason', netCheck.reason);
         updateStatusBar('skipped', netCheck.reason);
@@ -414,83 +524,64 @@ const Crawler = (() => {
 
       const batCheck = await checkBattery();
       if (!batCheck.ok) {
-        console.log(`[Crawler] ${batCheck.reason}`);
         await DB.setSetting('last_crawl_status', 'skipped');
         await DB.setSetting('last_crawl_skip_reason', batCheck.reason);
         updateStatusBar('skipped', batCheck.reason);
         return { skipped: true, reason: batCheck.reason };
       }
 
-      // 获取启用的爬虫配置
       const configs = await DB.getAll('crawler_configs');
       const enabledConfigs = configs.filter(c => c.enabled);
 
       if (enabledConfigs.length === 0) {
-        console.log('[Crawler] 没有启用的爬虫站点');
         updateStatusBar('offline');
         return { skipped: true, reason: '没有启用的爬虫站点' };
       }
 
-      console.log(`[Crawler] 开始${deep ? '深度' : '轻度'}爬取，共 ${enabledConfigs.length} 个站点`);
-      let totalItems = 0;
-      let successCount = 0;
-      let failCount = 0;
-      const failDetails = [];   // 新增：收集失败详情
+      console.log(`[Crawler] 开始爬取，共 ${enabledConfigs.length} 个站点`);
+      let totalItems = 0, successCount = 0, failCount = 0;
+      const failDetails = [];
 
       for (let i = 0; i < enabledConfigs.length; i++) {
-        const config = enabledConfigs[i];
-
-        if (deep) {
-          await crawlSite(config);
+        const log = await crawlSite(enabledConfigs[i]);
+        if (log.status === 'success') {
+          successCount++;
+          totalItems += log.items_scraped;
         } else {
-          const log = await crawlSite(config);
-          if (log.status === 'success') {
-            successCount++;
-            totalItems += log.items_scraped;
-          } else {
-            failCount++;
-            failDetails.push({
-              site: config.website_name,
-              url: config.base_url,
-              error: log.error_msg,
-              proxyUsed: log.proxy_used,
-              httpStatus: log.http_status,
-              matchedElements: log.matched_elements,
-              parseErrors: log.parse_errors,
-              errorDetail: log.error_detail,
-            });
-          }
+          failCount++;
+          failDetails.push({
+            site: enabledConfigs[i].website_name,
+            url: enabledConfigs[i].base_url,
+            type: enabledConfigs[i].type || 'html',
+            error: log.error_msg,
+            proxyUsed: log.proxy_used,
+            httpStatus: log.http_status,
+            matchedElements: log.matched_elements,
+            parseErrors: log.parse_errors,
+          });
         }
-
-        if (i < enabledConfigs.length - 1) {
-          await randomDelay();
-        }
+        if (i < enabledConfigs.length - 1) await randomDelay();
       }
 
-      // 更新状态
       const now = new Date().toISOString();
       await DB.setSetting('last_crawl_at', now);
       await DB.setSetting('last_crawl_status', successCount > 0 ? 'success' : 'failed');
       await DB.setSetting('last_crawl_items', totalItems);
 
-      // 新增：保存详细失败信息，供调试
       if (failDetails.length > 0) {
         await DB.setSetting('last_crawl_error_detail', JSON.stringify(failDetails));
       } else {
         await DB.setSetting('last_crawl_error_detail', null);
       }
 
-      console.log(`[Crawler] 爬取完成：成功${successCount}个，失败${failCount}个，共${totalItems}条数据`);
-
       if (successCount > 0) {
-        updateStatusBar('fresh', `抓取到 ${totalItems} 条最新行情`);
+        updateStatusBar('fresh', `抓取到 ${totalItems} 条`);
       } else {
         updateStatusBar('failed', '所有站点爬取失败');
       }
 
-      // 如果真实爬取失败，使用模拟更新作为后备
       if (successCount === 0) {
-        console.log('[Crawler] 真实爬取失败，启用模拟数据更新...');
+        console.log('[Crawler] 真实爬取失败，启用模拟数据...');
         await simulatePriceUpdate();
         await DB.setSetting('last_crawl_at', now);
         await DB.setSetting('last_crawl_status', 'simulated');
@@ -500,12 +591,11 @@ const Crawler = (() => {
       return { successCount, failCount, totalItems, failDetails };
 
     } catch (err) {
-      console.error('[Crawler] 爬虫异常:', err);
+      console.error('[Crawler] 异常:', err);
       await DB.setSetting('last_crawl_status', 'failed');
       await DB.setSetting('last_crawl_error', err.message);
       await DB.setSetting('last_crawl_error_detail', JSON.stringify([{ stage: 'global', error: err.message }]));
       updateStatusBar('failed', err.message);
-
       await simulatePriceUpdate();
       return { error: err.message };
     } finally {
@@ -513,7 +603,6 @@ const Crawler = (() => {
     }
   }
 
-  // 模拟价格更新（当真实爬取失败时的后备方案）
   async function simulatePriceUpdate() {
     const regionCode = await DB.getSetting('current_region', 'default');
     const now = new Date();
@@ -548,63 +637,36 @@ const Crawler = (() => {
       });
       updated++;
     }
-
-    console.log(`[Crawler] 模拟更新完成：${updated} 个品类`);
+    console.log(`[Crawler] 模拟更新: ${updated} 个品类`);
     return updated;
   }
 
-  // 更新状态栏
   function updateStatusBar(status, message = '') {
     const bar = document.getElementById('status-bar');
     if (!bar) return;
-
     let html = '';
     switch (status) {
-      case 'running':
-        html = `<span class="status-dot running"></span><span>正在抓取行情...</span>`;
-        break;
-      case 'fresh':
-        html = `<span class="status-dot fresh"></span><span>行情已更新 · ${message || '刚刚'}</span>`;
-        break;
-      case 'simulated':
-        html = `<span class="status-dot fresh"></span><span>${message || '行情已更新'}</span>`;
-        break;
-      case 'failed':
-        html = `<span class="status-dot failed"></span><span>上次同步失败 · 离线可用</span>`;
-        break;
-      case 'skipped':
-        html = `<span class="status-dot skipped"></span><span>${message || '已跳过同步'}</span>`;
-        break;
-      case 'offline':
-        html = `<span class="status-dot offline"></span><span>离线模式 · 使用历史数据</span>`;
-        break;
-      default:
-        html = `<span class="status-dot"></span><span>行情数据</span>`;
+      case 'running': html = `<span class="status-dot running"></span><span>正在抓取行情...</span>`; break;
+      case 'fresh': html = `<span class="status-dot fresh"></span><span>行情已更新 · ${message || '刚刚'}</span>`; break;
+      case 'simulated': html = `<span class="status-dot fresh"></span><span>${message || '行情已更新'}</span>`; break;
+      case 'failed': html = `<span class="status-dot failed"></span><span>上次同步失败 · 离线可用</span>`; break;
+      case 'skipped': html = `<span class="status-dot skipped"></span><span>${message || '已跳过同步'}</span>`; break;
+      case 'offline': html = `<span class="status-dot offline"></span><span>离线模式 · 使用历史数据</span>`; break;
+      default: html = `<span class="status-dot"></span><span>行情数据</span>`;
     }
     bar.innerHTML = html;
   }
 
-  // 从设置恢复状态栏
   async function restoreStatusBar() {
     const lastCrawlAt = await DB.getSetting('last_crawl_at', null);
     const lastStatus = await DB.getSetting('last_crawl_status', null);
+    if (!lastCrawlAt || !lastStatus) { updateStatusBar('offline'); return; }
 
-    if (!lastCrawlAt || !lastStatus) {
-      updateStatusBar('offline');
-      return;
-    }
-
-    const elapsed = Date.now() - new Date(lastCrawlAt).getTime();
-    const minutesAgo = Math.floor(elapsed / 60000);
-
+    const minutesAgo = Math.floor((Date.now() - new Date(lastCrawlAt).getTime()) / 60000);
     if (lastStatus === 'success' || lastStatus === 'simulated') {
-      if (minutesAgo < 60) {
-        updateStatusBar('fresh', `${minutesAgo} 分钟前`);
-      } else if (minutesAgo < 180) {
-        updateStatusBar('fresh', `${Math.floor(minutesAgo / 60)} 小时前`);
-      } else {
-        updateStatusBar('skipped', `数据较旧 · ${Math.floor(minutesAgo / 60)} 小时前`);
-      }
+      if (minutesAgo < 60) updateStatusBar('fresh', `${minutesAgo} 分钟前`);
+      else if (minutesAgo < 180) updateStatusBar('fresh', `${Math.floor(minutesAgo / 60)} 小时前`);
+      else updateStatusBar('skipped', `数据较旧 · ${Math.floor(minutesAgo / 60)} 小时前`);
     } else if (lastStatus === 'failed') {
       updateStatusBar('failed');
     } else {
@@ -612,38 +674,35 @@ const Crawler = (() => {
     }
   }
 
-  // 启动定时爬虫
   async function startScheduler() {
     if (crawlTimer) clearInterval(crawlTimer);
-
     const intervalMinutes = await DB.getSetting('crawler_interval_minutes', 120);
-    const intervalMs = intervalMinutes * 60 * 1000;
-
-    console.log(`[Crawler] 定时爬虫已启动，间隔 ${intervalMinutes} 分钟`);
-
     crawlTimer = setInterval(async () => {
       const enabled = await DB.getSetting('crawler_enabled', true);
-      if (enabled) {
-        await runCrawl(false);
-      }
-    }, intervalMs);
+      if (enabled) await runCrawl(false);
+    }, intervalMinutes * 60 * 1000);
+    console.log(`[Crawler] 定时器启动: ${intervalMinutes} 分钟`);
   }
 
-  // 停止定时爬虫
   function stopScheduler() {
-    if (crawlTimer) {
-      clearInterval(crawlTimer);
-      crawlTimer = null;
-      console.log('[Crawler] 定时爬虫已停止');
-    }
+    if (crawlTimer) { clearInterval(crawlTimer); crawlTimer = null; console.log('[Crawler] 定时器停止'); }
   }
 
+  // return {
+  //   runCrawl,
+  //   startScheduler,
+  //   stopScheduler,
+  //   restoreStatusBar,
+  //   simulatePriceUpdate,
+  //   isRunning: () => isRunning,
+  // };
   return {
-    runCrawl,
-    startScheduler,
-    stopScheduler,
-    restoreStatusBar,
-    simulatePriceUpdate,
-    isRunning: () => isRunning,
-  };
+  runCrawl,
+  startScheduler,
+  stopScheduler,
+  restoreStatusBar,
+  simulatePriceUpdate,
+  isRunning: () => isRunning,
+  _testFetchPage: fetchPage,  // 暴露给 App 测试连接用
+};
 })();

@@ -443,6 +443,34 @@ const App = (() => {
         html += `<div style="color:#e53935;">错误详情解析失败</div>`;
       }
     }
+        // ✅ 新增：站点认证管理
+    html += '<div style="margin-top:16px;font-size:14px;font-weight:600;margin-bottom:8px;">🔐 站点认证</div>';
+    for (const config of configs) {
+      let authInfo = { required: false };
+      try {
+        authInfo = JSON.parse(config.auth || '{}');
+      } catch (e) {}
+
+      let userAuth = {};
+      try {
+        userAuth = JSON.parse(config.user_auth || '{}');
+      } catch (e) {}
+
+      const hasAuth = Object.keys(userAuth).length > 0;
+      const authStatus = !authInfo.required
+        ? '<span style="color:#43a047;">无需认证</span>'
+        : hasAuth
+          ? '<span style="color:#1a73e8;">已配置</span>'
+          : '<span style="color:#e53935;font-weight:600;">未配置</span>';
+
+      html += `
+        <div class="crawler-site-item" style="cursor:pointer;" onclick="App.showAuthModal('${config.id}')">
+          <div class="crawler-site-name">${config.website_name}</div>
+          <div class="crawler-site-status">${authStatus}</div>
+          ${authInfo.required ? `<div style="font-size:11px;color:#888;">${authInfo.description || ''}</div>` : ''}
+        </div>
+      `;
+    }
 
     el.innerHTML = html;
   }
@@ -688,6 +716,125 @@ const App = (() => {
     }
   });
 
+    // ===== 站点认证管理 =====
+  let currentAuthConfigId = null;
+
+  async function showAuthModal(configId) {
+    currentAuthConfigId = configId;
+    const configs = await DB.getAll('crawler_configs');
+    const config = configs.find(c => c.id === configId);
+    if (!config) return;
+
+    let authInfo = { required: false, fields: [] };
+    try { authInfo = JSON.parse(config.auth || '{}'); } catch (e) {}
+
+    let userAuth = {};
+    try { userAuth = JSON.parse(config.user_auth || '{}'); } catch (e) {}
+
+    const body = document.getElementById('auth-modal-body');
+    let html = `
+      <div style="margin-bottom:12px;padding:10px;background:#f5f6f8;border-radius:8px;">
+        <div style="font-weight:600;">${config.website_name}</div>
+        <div style="font-size:13px;color:#666;margin-top:4px;">${config.base_url}</div>
+        ${authInfo.required ? `<div style="font-size:12px;color:#e53935;margin-top:4px;">⚠️ ${authInfo.description}</div>` : ''}
+      </div>
+    `;
+
+    if (!authInfo.required) {
+      html += '<div style="text-align:center;color:#666;padding:20px;">该站点无需认证</div>';
+    } else {
+      for (const field of (authInfo.fields || [])) {
+        const val = userAuth[field.key] || '';
+        if (field.type === 'textarea') {
+          html += `
+            <div class="form-group">
+              <label>${field.label}</label>
+              <textarea id="auth-${field.key}" rows="3" placeholder="${field.placeholder || ''}" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;resize:vertical;">${val}</textarea>
+            </div>
+          `;
+        } else {
+          html += `
+            <div class="form-group">
+              <label>${field.label}</label>
+              <input type="text" id="auth-${field.key}" value="${val}" placeholder="${field.placeholder || ''}" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;">
+            </div>
+          `;
+        }
+      }
+
+      html += `
+        <div style="margin-top:12px;font-size:12px;color:#888;line-height:1.6;">
+          💡 <strong>如何获取？</strong><br>
+          1. 用电脑浏览器打开目标网站并登录<br>
+          2. F12 → Network → 刷新页面 → 任意请求右键 Copy → Copy as cURL (bash)<br>
+          3. 提取 Cookie / Token 填入上方
+        </div>
+      `;
+    }
+
+    body.innerHTML = html;
+    document.getElementById('modal-auth').classList.remove('hidden');
+  }
+
+  async function saveAuth() {
+    if (!currentAuthConfigId) return;
+    const configs = await DB.getAll('crawler_configs');
+    const config = configs.find(c => c.id === currentAuthConfigId);
+    if (!config) return;
+
+    let authInfo = { required: false, fields: [] };
+    try { authInfo = JSON.parse(config.auth || '{}'); } catch (e) {}
+
+    const userAuth = {};
+    if (authInfo.fields) {
+      for (const field of authInfo.fields) {
+        const el = document.getElementById(`auth-${field.key}`);
+        if (el && el.value.trim()) {
+          userAuth[field.key] = el.value.trim();
+        }
+      }
+    }
+
+    await DB.put('crawler_configs', {
+      ...config,
+      user_auth: JSON.stringify(userAuth),
+    });
+
+    closeModal('modal-auth');
+    showToast('✅ 认证信息已保存');
+    await renderCrawlerStatus();
+  }
+
+  async function testAuth() {
+    if (!currentAuthConfigId) return;
+    showToast('🧪 正在测试连接...');
+
+    const configs = await DB.getAll('crawler_configs');
+    const config = configs.find(c => c.id === currentAuthConfigId);
+    if (!config) return;
+
+    // 解析认证配置
+    let siteAuth = null;
+    try { siteAuth = JSON.parse(config.auth || '{}'); } catch (e) {}
+
+    // 解析用户填入的认证信息
+    let userAuth = {};
+    try { userAuth = JSON.parse(config.user_auth || '{}'); } catch (e) {}
+
+    const customHeaders = { ...userAuth };
+
+    // 调用 fetchPage 测试（传入 authConfig 以增强登录检测）
+    const result = await Crawler._testFetchPage(config.base_url, customHeaders, siteAuth);
+
+    if (result.success) {
+      showToast('✅ 连接成功！可以正常抓取');
+    } else if (result.errorDetail && /登录页/.test(result.errorDetail)) {
+      showToast('❌ 返回登录页，Cookie 可能已失效，请去"设置→站点认证"更新');
+    } else {
+      showToast('❌ 连接失败: ' + (result.errorDetail || '未知错误').slice(0, 50));
+    }
+  }
+
   return {
     init, switchTab, filterCategories, setFilter, toggleFavorite,
     showPriceDetail, showPriceModal, savePrice, checkPriceCompare,
@@ -695,6 +842,7 @@ const App = (() => {
     closeModal, showToast, refreshData,
     renderMarket, renderLedger, renderTrendChart, setTrendPeriod,
     renderSettings, renderCrawlerStatus, updateSetting,
+    showAuthModal, saveAuth, testAuth,
   };
 })();
 
