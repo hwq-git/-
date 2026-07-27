@@ -276,14 +276,14 @@ const App = (() => {
       const time = new Date(r.recorded_at).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
       const isTon = cat?.unit === '元/吨';
       const unitDisplay = cat?.unit?.replace('元/', '') || 'kg';
-      const jinPrice = isTon && r.unit_price ? (r.unit_price / 2000).toFixed(2) : null;
+      const kgPrice = isTon && r.unit_price ? (r.unit_price / 1000).toFixed(2) : null;
 
       items.push(`
         <div class="ledger-item">
           <div class="type-icon ${r.type}">${typeIcon}</div>
           <div class="info">
             <div class="title">${catIcon} ${catName} · ${typeLabel}</div>
-            <div class="sub">${r.weight}${unitDisplay} × ¥${r.unit_price?.toLocaleString() || 0}/吨${jinPrice ? ` <span class="jin-price">(≈ ${jinPrice} 元/斤)</span>` : ''}${r.counterparty ? ' · ' + r.counterparty : ''} · ${time}</div>
+            <div class="sub">${r.weight}${unitDisplay} × ¥${r.unit_price?.toLocaleString() || 0}/吨${kgPrice ? ` <span class="kg-price">(≈ ${kgPrice} 元/kg)</span>` : ''}${r.counterparty ? ' · ' + r.counterparty : ''} · ${time}</div>
           </div>
           <div class="amount ${r.type}">${r.type === 'buy' ? '-' : '+'}¥${total.toLocaleString()}</div>
           <div class="item-actions">
@@ -756,7 +756,7 @@ const App = (() => {
     if (!hint) return;
     const val = parseFloat(input?.value);
     if (!val) { hint.classList.remove('show'); return; }
-    hint.innerHTML = `≈ ${(val / 2000).toFixed(2)} 元/斤`;
+    hint.innerHTML = `≈ ${(val / 1000).toFixed(2)} 元/kg`;
     hint.className = 'compare-hint show';
   }
 
