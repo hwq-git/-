@@ -9,6 +9,8 @@ const App = (() => {
   let ledgerType = 'buy';
   let allCategories = [];
   let favoriteIds = new Set();
+  let editingLedgerId = null;   // 正在编辑的记账记录ID
+  let editingPriceId = null;    // 正在编辑的价格记录ID
 
   // ===== 初始化 =====
   async function init() {
@@ -72,6 +74,7 @@ const App = (() => {
     }
     if (tabName === 'settings') {
       renderCrawlerStatus();
+      renderUserPrices();
     }
   }
 
@@ -280,6 +283,10 @@ const App = (() => {
             <div class="sub">${r.weight}${cat?.unit?.replace('元/', '') || 'kg'} × ¥${r.unit_price?.toLocaleString() || 0}${r.counterparty ? ' · ' + r.counterparty : ''} · ${time}</div>
           </div>
           <div class="amount ${r.type}">${r.type === 'buy' ? '-' : '+'}¥${total.toLocaleString()}</div>
+          <div class="item-actions">
+            <button class="icon-btn-sm edit-btn" onclick="event.stopPropagation(); App.editLedger('${r.id}')" title="编辑">✏️</button>
+            <button class="icon-btn-sm del-btn" onclick="event.stopPropagation(); App.deleteLedger('${r.id}')" title="删除">🗑️</button>
+          </div>
         </div>
       `);
     }
@@ -333,6 +340,50 @@ const App = (() => {
     document.getElementById('setting-interval').value = interval;
 
     await renderCrawlerStatus();
+    await renderUserPrices();
+  }
+
+  // 渲染手动录入的价格记录
+  async function renderUserPrices() {
+    const el = document.getElementById('user-prices-list');
+    if (!el) return;
+
+    const allPrices = await DB.getAll('prices');
+    const userPrices = allPrices
+      .filter(p => p.source === 'user')
+      .sort((a, b) => new Date(b.recorded_at) - new Date(a.recorded_at));
+
+    if (userPrices.length === 0) {
+      el.innerHTML = '<div style="text-align:center;color:#888;padding:16px;font-size:14px;">暂无手动录入的价格记录</div>';
+      return;
+    }
+
+    let html = '';
+    for (const p of userPrices.slice(0, 30)) {
+      const cat = allCategories.find(c => c.id === p.category_id) || CATEGORIES.find(c => c.id === p.category_id);
+      const catName = cat ? `${cat.icon || '📋'} ${cat.name}` : '未知品类';
+      const time = new Date(p.recorded_at).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+      html += `
+        <div class="user-price-item">
+          <div class="user-price-info">
+            <div class="user-price-name">${catName}</div>
+            <div class="user-price-values">
+              ${p.buy_price ? `<span>收: ¥${p.buy_price.toLocaleString()}</span>` : ''}
+              ${p.buy_price && p.sell_price ? '<span class="sep">|</span>' : ''}
+              ${p.sell_price ? `<span>卖: ¥${p.sell_price.toLocaleString()}</span>` : ''}
+            </div>
+            <div class="user-price-time">${p.source_detail || ''} · ${time}</div>
+          </div>
+          <div class="item-actions">
+            <button class="icon-btn-sm edit-btn" onclick="App.editUserPrice('${p.id}')" title="编辑">✏️</button>
+            <button class="icon-btn-sm del-btn" onclick="App.deleteUserPrice('${p.id}')" title="删除">🗑️</button>
+          </div>
+        </div>
+      `;
+    }
+
+    el.innerHTML = html;
   }
 
   // ✅ 增强：爬虫状态展示，新增错误详情面板
@@ -502,6 +553,8 @@ const App = (() => {
 
   // ===== 弹窗：录入价格 =====
   async function showPriceModal(categoryId = null) {
+    editingPriceId = null;
+    document.getElementById('modal-price').querySelector('.modal-header h3').textContent = '✏️ 录入成交价';
     const modal = document.getElementById('modal-price');
     const select = document.getElementById('price-category');
 
@@ -525,6 +578,33 @@ const App = (() => {
     if (select.value) {
       await checkPriceCompare();
     }
+  }
+
+  async function editUserPrice(id) {
+    const record = await DB.get('prices', id);
+    if (!record) { showToast('记录不存在'); return; }
+
+    editingPriceId = id;
+    document.getElementById('modal-price').querySelector('.modal-header h3').textContent = '✏️ 编辑成交价';
+    const select = document.getElementById('price-category');
+    if (!select.options.length) await fillCategorySelects();
+    select.value = record.category_id;
+    document.getElementById('price-buy').value = record.buy_price || '';
+    document.getElementById('price-sell').value = record.sell_price || '';
+    document.getElementById('price-note').value = record.source_detail || '';
+    document.getElementById('price-compare-hint').classList.remove('show');
+    const kgHint = document.getElementById('price-kg-hint');
+    if (kgHint) { kgHint.innerHTML = ''; kgHint.classList.remove('show'); }
+    document.getElementById('modal-price').classList.remove('hidden');
+    showPriceKgHint();
+  }
+
+  async function deleteUserPrice(id) {
+    if (!confirm('确定要删除这条价格记录吗？此操作不可撤销。')) return;
+    await DB.deleteItem('prices', id);
+    showToast('🗑️ 价格记录已删除');
+    await renderMarket();
+    await renderUserPrices();
   }
 
   function showPriceKgHint() {
@@ -594,33 +674,74 @@ const App = (() => {
     if (!buyPrice && !sellPrice) { showToast('请输入价格'); return; }
 
     const regionCode = await DB.getSetting('current_region', 'default');
-    const now = new Date().toISOString();
 
-    await DB.put('prices', {
-      id: `user_${catId}_${Date.now()}`,
-      category_id: catId,
-      buy_price: buyPrice || 0,
-      sell_price: sellPrice || 0,
-      region_code: regionCode,
-      source: 'user',
-      source_detail: note || '我记的',
-      recorded_at: now,
-      created_at: now,
-    });
+    if (editingPriceId) {
+      // 编辑模式
+      const existing = await DB.get('prices', editingPriceId);
+      await DB.put('prices', {
+        ...existing,
+        category_id: catId,
+        buy_price: buyPrice || 0,
+        sell_price: sellPrice || 0,
+        source_detail: note || existing.source_detail || '我记的',
+      });
+      showToast('✅ 价格已更新');
+    } else {
+      // 新建模式
+      const now = new Date().toISOString();
+      await DB.put('prices', {
+        id: `user_${catId}_${Date.now()}`,
+        category_id: catId,
+        buy_price: buyPrice || 0,
+        sell_price: sellPrice || 0,
+        region_code: regionCode,
+        source: 'user',
+        source_detail: note || '我记的',
+        recorded_at: now,
+        created_at: now,
+      });
+      showToast('✅ 价格已保存');
+    }
 
+    editingPriceId = null;
     closeModal('modal-price');
-    showToast('✅ 价格已保存');
     await renderMarket();
+    await renderUserPrices();
   }
 
   // ===== 弹窗：记账 =====
   function showLedgerModal() {
+    editingLedgerId = null;
+    document.getElementById('modal-ledger').querySelector('.modal-header h3').textContent = '📋 新建记录';
     const modal = document.getElementById('modal-ledger');
     document.getElementById('ledger-weight').value = '';
     document.getElementById('ledger-unit-price').value = '';
     document.getElementById('ledger-counterparty').value = '';
     document.getElementById('ledger-note').value = '';
+    setLedgerType('buy');
     modal.classList.remove('hidden');
+  }
+
+  async function editLedger(id) {
+    const record = await DB.get('ledger', id);
+    if (!record) { showToast('记录不存在'); return; }
+
+    editingLedgerId = id;
+    document.getElementById('modal-ledger').querySelector('.modal-header h3').textContent = '✏️ 编辑记录';
+    setLedgerType(record.type);
+    document.getElementById('ledger-category').value = record.category_id;
+    document.getElementById('ledger-weight').value = record.weight;
+    document.getElementById('ledger-unit-price').value = record.unit_price;
+    document.getElementById('ledger-counterparty').value = record.counterparty || '';
+    document.getElementById('ledger-note').value = record.note || '';
+    document.getElementById('modal-ledger').classList.remove('hidden');
+  }
+
+  async function deleteLedger(id) {
+    if (!confirm('确定要删除这条记录吗？此操作不可撤销。')) return;
+    await DB.deleteItem('ledger', id);
+    showToast('🗑️ 记录已删除');
+    await renderLedger();
   }
 
   function setLedgerType(type) {
@@ -641,23 +762,41 @@ const App = (() => {
     if (!weight || !unitPrice) { showToast('请输入重量和单价'); return; }
 
     const total = weight * unitPrice;
-    const now = new Date().toISOString();
 
-    await DB.put('ledger', {
-      id: `ledger_${Date.now()}`,
-      type: ledgerType,
-      category_id: catId,
-      weight: weight,
-      unit_price: unitPrice,
-      total: total,
-      counterparty: counterparty || '',
-      note: note || '',
-      recorded_at: now,
-      created_at: now,
-    });
+    if (editingLedgerId) {
+      // 编辑模式：保留原有 id 和 created_at
+      const existing = await DB.get('ledger', editingLedgerId);
+      await DB.put('ledger', {
+        ...existing,
+        type: ledgerType,
+        category_id: catId,
+        weight: weight,
+        unit_price: unitPrice,
+        total: total,
+        counterparty: counterparty || '',
+        note: note || '',
+      });
+      showToast('✅ 记录已更新');
+    } else {
+      // 新建模式
+      const now = new Date().toISOString();
+      await DB.put('ledger', {
+        id: `ledger_${Date.now()}`,
+        type: ledgerType,
+        category_id: catId,
+        weight: weight,
+        unit_price: unitPrice,
+        total: total,
+        counterparty: counterparty || '',
+        note: note || '',
+        recorded_at: now,
+        created_at: now,
+      });
+      showToast('✅ 记录已保存');
+    }
 
+    editingLedgerId = null;
     closeModal('modal-ledger');
-    showToast('✅ 记录已保存');
     await renderLedger();
   }
 
@@ -880,6 +1019,7 @@ const App = (() => {
     renderSettings, renderCrawlerStatus, updateSetting,
     showAuthModal, saveAuth, testAuth,
     showPriceKgHint,
+    editLedger, deleteLedger, editUserPrice, deleteUserPrice,
   };
 })();
 

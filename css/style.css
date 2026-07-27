@@ -305,6 +305,44 @@ button { cursor: pointer; border: none; background: none; color: inherit; }
 .ledger-item .amount.buy { color: var(--up); }
 .ledger-item .amount.sell { color: var(--down); }
 
+/* 编辑/删除小按钮 */
+.item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+.icon-btn-sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.edit-btn { background: rgba(26,115,232,0.08); }
+.edit-btn:active { background: rgba(26,115,232,0.2); }
+.del-btn { background: rgba(229,57,53,0.08); }
+.del-btn:active { background: rgba(229,57,53,0.2); }
+
+/* 手动价格记录列表 */
+.user-price-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.user-price-item:last-child { border-bottom: none; }
+.user-price-info { flex: 1; min-width: 0; }
+.user-price-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.user-price-values { font-size: 14px; color: var(--text); font-weight: 500; }
+.user-price-values .sep { color: var(--text-light); margin: 0 6px; }
+.user-price-time { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+
 .empty-state {
   text-align: center;
   padding: 40px 20px;
