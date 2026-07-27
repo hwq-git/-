@@ -507,6 +507,76 @@ const Crawler = (() => {
     return log;
   }
 
+  // ========== 远程数据拉取（从 GitHub Actions 抓取的 JSON） ==========
+  const REMOTE_PRICES_URLS = [
+    // 用户修改为实际 GitHub 仓库地址后生效
+    // 'https://raw.githubusercontent.com/USER/REPO/main/data/scraped-prices.json',
+  ];
+
+  // 本地文件作为后备
+  const LOCAL_PRICES_PATH = './data/scraped-prices.json';
+
+  async function fetchRemotePrices() {
+    let allResults = [];
+    let fetchErrors = [];
+    const regionCode = await DB.getSetting('current_region', 'default');
+
+    // 从上一版爬虫配置获取本地文件也尝试
+    const sources = [...REMOTE_PRICES_URLS, LOCAL_PRICES_PATH];
+
+    for (const src of sources) {
+      try {
+        console.log(`[Crawler] 尝试拉取远程价格: ${src}`);
+        const resp = await fetch(src, { cache: 'no-store' });
+        if (!resp.ok) {
+          fetchErrors.push({ source: src, error: `HTTP ${resp.status}` });
+          continue;
+        }
+        const data = await resp.json();
+
+        if (!data.prices || !Array.isArray(data.prices)) {
+          fetchErrors.push({ source: src, error: '数据格式错误' });
+          continue;
+        }
+
+        console.log(`[Crawler] ✅ 从 ${src} 获取 ${data.prices.length} 条价格`);
+
+        // 入库
+        const now = new Date().toISOString();
+        const records = data.prices.map(p => ({
+          id: `remote_${p.category_id}_${now}`,
+          category_id: p.category_id,
+          buy_price: p.buy_price,
+          sell_price: p.sell_price,
+          region_code: regionCode,
+          source: 'crawler',
+          source_detail: data.scraped_at ? `远程数据 · ${new Date(data.scraped_at).toLocaleDateString('zh-CN')}` : '远程数据',
+          recorded_at: now,
+          created_at: now,
+        }));
+
+        await DB.bulkPut('prices', records);
+        allResults.push(...records);
+        break; // 成功则不再尝试其他源
+      } catch (e) {
+        fetchErrors.push({ source: src, error: e.message });
+      }
+    }
+
+    if (allResults.length === 0) {
+      console.log('[Crawler] 远程数据获取失败，错误:', fetchErrors);
+      return { success: false, errors: fetchErrors };
+    }
+
+    const now = new Date().toISOString();
+    await DB.setSetting('last_crawl_at', now);
+    await DB.setSetting('last_crawl_status', 'success');
+    await DB.setSetting('last_crawl_items', allResults.length);
+    await DB.setSetting('last_crawl_error_detail', null);
+
+    return { success: true, count: allResults.length, errors: fetchErrors };
+  }
+
   // ========== runCrawl / simulatePriceUpdate / 状态栏 / 定时器（基本不变）==========
   async function runCrawl(deep = false) {
     if (isRunning) return { skipped: true };
@@ -530,65 +600,70 @@ const Crawler = (() => {
         return { skipped: true, reason: batCheck.reason };
       }
 
+      // ===== 优先：拉取远程抓取数据（GitHub Actions 产出） =====
+      console.log('[Crawler] 步骤1: 尝试远程数据...');
+      const remoteResult = await fetchRemotePrices();
+      if (remoteResult.success) {
+        updateStatusBar('fresh', `真实数据 ${remoteResult.count} 条`);
+        isRunning = false;
+        return { successCount: 1, totalItems: remoteResult.count };
+      }
+
+      // ===== 备选：浏览器端 CORS 代理爬取 =====
+      console.log('[Crawler] 步骤2: 远程数据不可用，尝试浏览器爬取...');
       const configs = await DB.getAll('crawler_configs');
       const enabledConfigs = configs.filter(c => c.enabled);
 
-      if (enabledConfigs.length === 0) {
-        updateStatusBar('offline');
-        return { skipped: true, reason: '没有启用的爬虫站点' };
-      }
+      if (enabledConfigs.length > 0) {
+        let totalItems = 0, successCount = 0, failCount = 0;
+        const failDetails = [];
 
-      console.log(`[Crawler] 开始爬取，共 ${enabledConfigs.length} 个站点`);
-      let totalItems = 0, successCount = 0, failCount = 0;
-      const failDetails = [];
-
-      for (let i = 0; i < enabledConfigs.length; i++) {
-        const log = await crawlSite(enabledConfigs[i]);
-        if (log.status === 'success') {
-          successCount++;
-          totalItems += log.items_scraped;
-        } else {
-          failCount++;
-          failDetails.push({
-            site: enabledConfigs[i].website_name,
-            url: enabledConfigs[i].base_url,
-            type: enabledConfigs[i].type || 'html',
-            error: log.error_msg,
-            proxyUsed: log.proxy_used,
-            httpStatus: log.http_status,
-            matchedElements: log.matched_elements,
-            parseErrors: log.parse_errors,
-          });
+        for (let i = 0; i < enabledConfigs.length; i++) {
+          const log = await crawlSite(enabledConfigs[i]);
+          if (log.status === 'success') {
+            successCount++;
+            totalItems += log.items_scraped;
+          } else {
+            failCount++;
+            failDetails.push({
+              site: enabledConfigs[i].website_name,
+              url: enabledConfigs[i].base_url,
+              type: enabledConfigs[i].type || 'html',
+              error: log.error_msg,
+              proxyUsed: log.proxy_used,
+              httpStatus: log.http_status,
+              matchedElements: log.matched_elements,
+              parseErrors: log.parse_errors,
+            });
+          }
+          if (i < enabledConfigs.length - 1) await randomDelay();
         }
-        if (i < enabledConfigs.length - 1) await randomDelay();
-      }
 
-      const now = new Date().toISOString();
-      await DB.setSetting('last_crawl_at', now);
-      await DB.setSetting('last_crawl_status', successCount > 0 ? 'success' : 'failed');
-      await DB.setSetting('last_crawl_items', totalItems);
-
-      if (failDetails.length > 0) {
-        await DB.setSetting('last_crawl_error_detail', JSON.stringify(failDetails));
-      } else {
-        await DB.setSetting('last_crawl_error_detail', null);
-      }
-
-      if (successCount > 0) {
-        updateStatusBar('fresh', `抓取到 ${totalItems} 条`);
-      } else {
-        updateStatusBar('failed', '所有站点爬取失败');
-      }
-
-      if (successCount === 0) {
-        console.log('[Crawler] 真实爬取失败，启用模拟数据...');
-        await simulatePriceUpdate();
+        const now = new Date().toISOString();
         await DB.setSetting('last_crawl_at', now);
-        await DB.setSetting('last_crawl_status', 'simulated');
-        updateStatusBar('simulated', '行情已更新（模拟数据）');
+
+        if (successCount > 0) {
+          await DB.setSetting('last_crawl_status', 'success');
+          await DB.setSetting('last_crawl_items', totalItems);
+          await DB.setSetting('last_crawl_error_detail', null);
+          updateStatusBar('fresh', `抓取到 ${totalItems} 条`);
+          isRunning = false;
+          return { successCount, failCount, totalItems, failDetails };
+        }
+
+        if (failDetails.length > 0) {
+          await DB.setSetting('last_crawl_error_detail', JSON.stringify(failDetails));
+        }
       }
 
-      return { successCount, failCount, totalItems, failDetails };
+      // ===== 兜底：模拟数据 =====
+      console.log('[Crawler] 步骤3: 爬取失败，启用模拟数据...');
+      const now = new Date().toISOString();
+      await simulatePriceUpdate();
+      await DB.setSetting('last_crawl_at', now);
+      await DB.setSetting('last_crawl_status', 'simulated');
+      updateStatusBar('simulated', '行情已更新（模拟数据）');
+      return { simulated: true };
 
     } catch (err) {
       console.error('[Crawler] 异常:', err);
@@ -702,6 +777,7 @@ const Crawler = (() => {
   stopScheduler,
   restoreStatusBar,
   simulatePriceUpdate,
+  fetchRemotePrices,
   isRunning: () => isRunning,
   _testFetchPage: fetchPage,  // 暴露给 App 测试连接用
 };

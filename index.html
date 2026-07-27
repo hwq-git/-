@@ -134,6 +134,11 @@
         </select>
       </div>
       <button class="action-btn" onclick="Crawler.runCrawl(false)">🔄 立即爬取</button>
+      <button class="action-btn" onclick="Crawler.fetchRemotePrices().then(r => { if(r.success) App.refreshData(); else App.showToast('❌ 远程数据不可用，请先配置 GitHub 仓库地址'); })" style="background:#1a73e8;color:#fff;">☁️ 拉取远程数据</button>
+      <div style="font-size:12px;color:#888;margin-top:8px;line-height:1.6;">
+        💡 真实数据由 GitHub Actions 定时抓取，上传仓库后自动生效。<br>
+        需在 js/crawler.js 中配置 REMOTE_PRICES_URLS 为实际 raw URL。
+      </div>
     </div>
 
     <!-- 爬虫状态 -->
