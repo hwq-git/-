@@ -1,6 +1,6 @@
 {
-  "version": "1.0.7",
-  "updated_at": "2026-07-27T12:30:00+08:00",
+  "version": "1.0.8",
+  "updated_at": "2026-07-27T21:30:00+08:00",
   "sites": [
     {
       "name": "废品之家",
@@ -8,10 +8,7 @@
       "baseUrl": "https://www.feipinzhijia.com/hangqing/",
       "listSelector": ".price-list li",
       "fields": { "category": ".name", "price": ".price-value", "change": ".change", "date": ".date" },
-      "auth": {
-        "required": false,
-        "description": "无需登录"
-      },
+      "auth": { "required": false, "description": "无需登录" },
       "intervalMinutes": 120,
       "enabled": true
     },
@@ -49,20 +46,106 @@
       "enabled": true
     },
     {
-      "name": "Feijiu网(四川省绵阳市废旧金属)",
+      "name": "Feijiu网(绵阳废金属)",
       "type": "html",
       "baseUrl": "https://www.feijiu.net/mianyang-FeiJinShu/",
       "listSelector": ".hq-list .hq-item",
       "fields": { "category": ".hq-name", "price": ".hq-price", "change": ".hq-change", "date": ".hq-date" },
       "auth": {
-        "required": true,
-        "description": "需要登录后的 Cookie（去设置→站点认证填写）",
-        "fields": [
-          { "key": "Cookie", "label": "Cookie", "placeholder": "sessionid=xxx; token=xxx", "type": "textarea" },
-          { "key": "Authorization", "label": "Token (可选)", "placeholder": "Bearer xxx", "type": "text" }
-        ]
+        "required": false,
+        "description": "绵阳地区废金属报价"
       },
       "intervalMinutes": 180,
+      "enabled": true
+    },
+    {
+      "name": "Feijiu网(绵阳废纸)",
+      "type": "html",
+      "baseUrl": "https://www.feijiu.net/mianyang-FeiZhi/",
+      "listSelector": ".hq-list .hq-item",
+      "fields": { "category": ".hq-name", "price": ".hq-price", "change": ".hq-change", "date": ".hq-date" },
+      "auth": { "required": false, "description": "绵阳地区废纸报价" },
+      "intervalMinutes": 180,
+      "enabled": true
+    },
+    {
+      "name": "Feijiu网(绵阳废塑料)",
+      "type": "html",
+      "baseUrl": "https://www.feijiu.net/mianyang-FeiSuLiao/",
+      "listSelector": ".hq-list .hq-item",
+      "fields": { "category": ".hq-name", "price": ".hq-price", "change": ".hq-change", "date": ".hq-date" },
+      "auth": { "required": false, "description": "绵阳地区废塑料报价" },
+      "intervalMinutes": 180,
+      "enabled": true
+    },
+    {
+      "name": "金投网-废金属价格",
+      "type": "html",
+      "baseUrl": "https://jiage.cngold.org/feijinshu/",
+      "listSelector": ".table-cont tr",
+      "fields": { "category": "td:nth-child(1)", "price": "td:nth-child(2)", "change": "td:nth-child(3)" },
+      "auth": { "required": false, "description": "公开行情，无需登录" },
+      "intervalMinutes": 240,
+      "enabled": true
+    },
+    {
+      "name": "金投网-废纸价格",
+      "type": "html",
+      "baseUrl": "https://jiage.cngold.org/feizhi/",
+      "listSelector": ".table-cont tr",
+      "fields": { "category": "td:nth-child(1)", "price": "td:nth-child(2)", "change": "td:nth-child(3)" },
+      "auth": { "required": false, "description": "公开行情，无需登录" },
+      "intervalMinutes": 240,
+      "enabled": true
+    },
+    {
+      "name": "我的钢铁网-废钢",
+      "type": "html",
+      "baseUrl": "https://www.mysteel.com/feigang.htm",
+      "listSelector": ".listRight ul li",
+      "fields": { "category": "a", "price": ".price" },
+      "auth": { "required": false, "description": "公开行情" },
+      "intervalMinutes": 240,
+      "enabled": true
+    },
+    {
+      "name": "ZZ91再生网-废金属",
+      "type": "html",
+      "baseUrl": "https://www.zz91.com/hangqing/",
+      "listSelector": ".hangqing-list .item",
+      "fields": { "category": ".name a", "price": ".price span", "change": ".change", "date": ".date" },
+      "auth": { "required": false, "description": "公开行情页" },
+      "intervalMinutes": 240,
+      "enabled": true
+    },
+    {
+      "name": "回收商网-废品报价",
+      "type": "html",
+      "baseUrl": "http://www.huishoushang.com/quote/",
+      "listSelector": ".quote-list li",
+      "fields": { "category": ".name", "price": ".price" },
+      "auth": { "required": false, "description": "公开报价" },
+      "intervalMinutes": 300,
+      "enabled": true
+    },
+    {
+      "name": "中国废品网-行情",
+      "type": "html",
+      "baseUrl": "https://www.zgfeipin.com/hangqing/",
+      "listSelector": ".list li",
+      "fields": { "category": ".title", "price": ".price" },
+      "auth": { "required": false, "description": "公开行情" },
+      "intervalMinutes": 300,
+      "enabled": true
+    },
+    {
+      "name": "ZZ91再生网(绵阳)",
+      "type": "html",
+      "baseUrl": "https://mianyang.zz91.com/hangqing/",
+      "listSelector": ".hangqing-list .item",
+      "fields": { "category": ".name a", "price": ".price span", "date": ".date" },
+      "auth": { "required": false, "description": "绵阳地区公开行情" },
+      "intervalMinutes": 240,
       "enabled": true
     }
   ]
