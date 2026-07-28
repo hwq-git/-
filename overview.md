@@ -76,6 +76,10 @@ python scripts/scraper.py
 ```
 
 ### GitHub Actions 自动化（推荐）
+```bash
+# 更新数据到GitHub和Gitee
+python3 scripts/scraper.py && git add data/ && git commit -m "更新" && git push origin master:main && git push gitee master:master
+
 GitHub Actions 每天 8:00/12:00/16:00/20:00 (UTC+8) 自动运行 Python 爬虫，
 将抓取结果写入 `data/scraped-prices.json` 并提交到仓库。
 PWA 前端优先加载此文件作为价格数据源，实现零服务器成本的实时行情更新。
