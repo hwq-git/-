@@ -1,18 +1,20 @@
 {
-  "version": "2.0.0",
-  "updated_at": "2026-07-28T11:30:00+08:00",
+  "version": "2.1.0",
+  "updated_at": "2026-07-28T12:30:00+08:00",
   "sites": [
     {
-      "name": "金投网-废金属行情",
+      "name": "金投网-废品行情",
       "type": "jintou_api",
       "baseUrl": "https://www.quheqihuo.com/api/dz/ajax/data_by_ids.html",
-      "description": "金投网实时废金属价格API，公开可用，不需要认证",
+      "description": "金投网实时废品价格API，双通道：js_废金属 + other_废纸/塑料/橡胶/玻璃",
       "intervalMinutes": 120,
       "enabled": true,
       "api_config": {
-        "id_prefix": "js_",
         "batch_size": 100,
-        "id_range": [0, 1500]
+        "channels": [
+          {"prefix": "js_", "range": [0, 1500], "desc": "废金属"},
+          {"prefix": "other_", "range": [0, 10000], "desc": "废纸/塑料/橡胶/玻璃"}
+        ]
       }
     }
   ]

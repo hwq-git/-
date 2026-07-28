@@ -1,95 +1,275 @@
 {
-  "version": "2.0.0",
-  "scraped_at": "2026-07-28T03:21:25.604158+00:00",
+  "version": "2.1.0",
+  "scraped_at": "2026-07-28T10:37:38.826258+00:00",
   "total_categories": 30,
-  "total_raw": 1163,
+  "total_raw": 2059,
   "success_sites": 1,
   "total_sites": 1,
   "data_source": "真实+模拟",
   "prices": [
     {
-      "category_id": "metal_aluminum",
-      "name": "废铝",
-      "buy_price": 20030,
-      "sell_price": 20856,
-      "raw_avg_price": 20625,
-      "sample_count": 152,
+      "category_id": "glass_flat",
+      "name": "平板玻璃",
+      "buy_price": 23,
+      "sell_price": 24,
+      "raw_avg_price": 24,
+      "sample_count": 9,
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T03:21:25.603643+00:00"
+      "scraped_at": "2026-07-28T10:37:38.824619+00:00"
+    },
+    {
+      "category_id": "metal_aluminum",
+      "name": "废铝",
+      "buy_price": 2716,
+      "sell_price": 2828,
+      "raw_avg_price": 2795,
+      "sample_count": 342,
+      "sources": [
+        "金投网"
+      ],
+      "scraped_at": "2026-07-28T10:37:38.823658+00:00"
     },
     {
       "category_id": "metal_copper",
       "name": "废铜",
-      "buy_price": 84632,
-      "sell_price": 88122,
-      "raw_avg_price": 87225,
-      "sample_count": 260,
+      "buy_price": 81238,
+      "sell_price": 84588,
+      "raw_avg_price": 83650,
+      "sample_count": 294,
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T03:21:25.603697+00:00"
+      "scraped_at": "2026-07-28T10:37:38.823738+00:00"
     },
     {
       "category_id": "metal_iron",
       "name": "废铁",
-      "buy_price": 1921,
-      "sell_price": 2000,
-      "raw_avg_price": 1980,
-      "sample_count": 542,
+      "buy_price": 1862,
+      "sell_price": 1939,
+      "raw_avg_price": 1920,
+      "sample_count": 722,
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T03:21:25.603806+00:00"
+      "scraped_at": "2026-07-28T10:37:38.823976+00:00"
     },
     {
       "category_id": "metal_lead",
       "name": "废铅",
-      "buy_price": 14550,
-      "sell_price": 15150,
-      "raw_avg_price": 14825,
+      "buy_price": 14210,
+      "sell_price": 14796,
+      "raw_avg_price": 14562,
       "sample_count": 48,
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T03:21:25.603819+00:00"
+      "scraped_at": "2026-07-28T10:37:38.824001+00:00"
     },
     {
       "category_id": "metal_steel",
       "name": "不锈钢",
-      "buy_price": 10282,
-      "sell_price": 10706,
-      "raw_avg_price": 10600,
+      "buy_price": 10234,
+      "sell_price": 10656,
+      "raw_avg_price": 10550,
       "sample_count": 65,
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T03:21:25.603836+00:00"
+      "scraped_at": "2026-07-28T10:37:38.824418+00:00"
     },
     {
       "category_id": "metal_tin",
       "name": "废锡",
-      "buy_price": 395178,
-      "sell_price": 411474,
-      "raw_avg_price": 407400,
-      "sample_count": 31,
+      "buy_price": 352838,
+      "sell_price": 367388,
+      "raw_avg_price": 356075,
+      "sample_count": 38,
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T03:21:25.603825+00:00"
+      "scraped_at": "2026-07-28T10:37:38.824016+00:00"
     },
     {
       "category_id": "metal_zinc",
       "name": "废锌",
-      "buy_price": 23843,
-      "sell_price": 24826,
-      "raw_avg_price": 24580,
-      "sample_count": 65,
+      "buy_price": 22174,
+      "sell_price": 23089,
+      "raw_avg_price": 22855,
+      "sample_count": 90,
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T03:21:25.603559+00:00"
+      "scraped_at": "2026-07-28T10:37:38.823508+00:00"
+    },
+    {
+      "category_id": "paper_baizhibian",
+      "name": "白纸边",
+      "buy_price": 4278,
+      "sell_price": 4454,
+      "raw_avg_price": 4355,
+      "sample_count": 2,
+      "sources": [
+        "金投网"
+      ],
+      "scraped_at": "2026-07-28T10:37:38.824611+00:00"
+    },
+    {
+      "category_id": "paper_hunhe",
+      "name": "混合废纸",
+      "buy_price": 1892,
+      "sell_price": 1970,
+      "raw_avg_price": 1950,
+      "sample_count": 11,
+      "sources": [
+        "金投网"
+      ],
+      "scraped_at": "2026-07-28T10:37:38.824650+00:00"
+    },
+    {
+      "category_id": "paper_shuzhi",
+      "name": "书纸",
+      "buy_price": 6014,
+      "sell_price": 6262,
+      "raw_avg_price": 6200,
+      "sample_count": 1,
+      "sources": [
+        "金投网"
+      ],
+      "scraped_at": "2026-07-28T10:37:38.824657+00:00"
+    },
+    {
+      "category_id": "paper_waiboxhi",
+      "name": "瓦楞纸",
+      "buy_price": 3104,
+      "sell_price": 3232,
+      "raw_avg_price": 3200,
+      "sample_count": 5,
+      "sources": [
+        "金投网"
+      ],
+      "scraped_at": "2026-07-28T10:37:38.824665+00:00"
+    },
+    {
+      "category_id": "paper_zhixiang",
+      "name": "纸箱",
+      "buy_price": 2958,
+      "sell_price": 3080,
+      "raw_avg_price": 3050,
+      "sample_count": 3,
+      "sources": [
+        "金投网"
+      ],
+      "scraped_at": "2026-07-28T10:37:38.824673+00:00"
+    },
+    {
+      "category_id": "plastic_abs",
+      "name": "ABS",
+      "buy_price": 14065,
+      "sell_price": 14645,
+      "raw_avg_price": 14250,
+      "sample_count": 114,
+      "sources": [
+        "金投网"
+      ],
+      "scraped_at": "2026-07-28T10:37:38.824474+00:00"
+    },
+    {
+      "category_id": "plastic_pc",
+      "name": "PC塑料",
+      "buy_price": 15035,
+      "sell_price": 15655,
+      "raw_avg_price": 15400,
+      "sample_count": 24,
+      "sources": [
+        "金投网"
+      ],
+      "scraped_at": "2026-07-28T10:37:38.824574+00:00"
+    },
+    {
+      "category_id": "plastic_pe",
+      "name": "PE膜",
+      "buy_price": 10136,
+      "sell_price": 10554,
+      "raw_avg_price": 10417,
+      "sample_count": 54,
+      "sources": [
+        "金投网"
+      ],
+      "scraped_at": "2026-07-28T10:37:38.824517+00:00"
+    },
+    {
+      "category_id": "plastic_pet",
+      "name": "PET瓶片",
+      "buy_price": 6877,
+      "sell_price": 7161,
+      "raw_avg_price": 6985,
+      "sample_count": 30,
+      "sources": [
+        "金投网"
+      ],
+      "scraped_at": "2026-07-28T10:37:38.824588+00:00"
+    },
+    {
+      "category_id": "plastic_pp",
+      "name": "PP编织袋",
+      "buy_price": 8342,
+      "sell_price": 8686,
+      "raw_avg_price": 8600,
+      "sample_count": 125,
+      "sources": [
+        "金投网"
+      ],
+      "scraped_at": "2026-07-28T10:37:38.824561+00:00"
+    },
+    {
+      "category_id": "plastic_ps",
+      "name": "PS塑料",
+      "buy_price": 10088,
+      "sell_price": 10504,
+      "raw_avg_price": 10400,
+      "sample_count": 11,
+      "sources": [
+        "金投网"
+      ],
+      "scraped_at": "2026-07-28T10:37:38.824438+00:00"
+    },
+    {
+      "category_id": "plastic_pvc",
+      "name": "PVC硬质",
+      "buy_price": 4608,
+      "sell_price": 4798,
+      "raw_avg_price": 4750,
+      "sample_count": 25,
+      "sources": [
+        "金投网"
+      ],
+      "scraped_at": "2026-07-28T10:37:38.824601+00:00"
+    },
+    {
+      "category_id": "rubber_hose",
+      "name": "废胶管",
+      "buy_price": 16684,
+      "sell_price": 17372,
+      "raw_avg_price": 17200,
+      "sample_count": 11,
+      "sources": [
+        "金投网"
+      ],
+      "scraped_at": "2026-07-28T10:37:38.824642+00:00"
+    },
+    {
+      "category_id": "rubber_tire",
+      "name": "废轮胎",
+      "buy_price": 15035,
+      "sell_price": 15655,
+      "raw_avg_price": 15500,
+      "sample_count": 35,
+      "sources": [
+        "金投网"
+      ],
+      "scraped_at": "2026-07-28T10:37:38.824633+00:00"
     },
     {
       "category_id": "appliance_ac",
@@ -101,7 +281,7 @@
       "sources": [
         "行情参考价（模拟）"
       ],
-      "scraped_at": "2026-07-28T03:21:25.604063+00:00"
+      "scraped_at": "2026-07-28T10:37:38.826171+00:00"
     },
     {
       "category_id": "appliance_fridge",
@@ -113,7 +293,7 @@
       "sources": [
         "行情参考价（模拟）"
       ],
-      "scraped_at": "2026-07-28T03:21:25.604057+00:00"
+      "scraped_at": "2026-07-28T10:37:38.826156+00:00"
     },
     {
       "category_id": "appliance_phone",
@@ -125,7 +305,7 @@
       "sources": [
         "行情参考价（模拟）"
       ],
-      "scraped_at": "2026-07-28T03:21:25.604069+00:00"
+      "scraped_at": "2026-07-28T10:37:38.826185+00:00"
     },
     {
       "category_id": "appliance_tv",
@@ -137,7 +317,7 @@
       "sources": [
         "行情参考价（模拟）"
       ],
-      "scraped_at": "2026-07-28T03:21:25.604066+00:00"
+      "scraped_at": "2026-07-28T10:37:38.826178+00:00"
     },
     {
       "category_id": "appliance_washer",
@@ -149,7 +329,7 @@
       "sources": [
         "行情参考价（模拟）"
       ],
-      "scraped_at": "2026-07-28T03:21:25.604060+00:00"
+      "scraped_at": "2026-07-28T10:37:38.826164+00:00"
     },
     {
       "category_id": "glass_bottle",
@@ -161,31 +341,7 @@
       "sources": [
         "行情参考价（模拟）"
       ],
-      "scraped_at": "2026-07-28T03:21:25.604053+00:00"
-    },
-    {
-      "category_id": "glass_flat",
-      "name": "平板玻璃",
-      "buy_price": 851,
-      "sell_price": 967,
-      "raw_avg_price": 909,
-      "sample_count": 1,
-      "sources": [
-        "行情参考价（模拟）"
-      ],
-      "scraped_at": "2026-07-28T03:21:25.604050+00:00"
-    },
-    {
-      "category_id": "paper_baizhibian",
-      "name": "白纸边",
-      "buy_price": 1864,
-      "sell_price": 1979,
-      "raw_avg_price": 1922,
-      "sample_count": 1,
-      "sources": [
-        "行情参考价（模拟）"
-      ],
-      "scraped_at": "2026-07-28T03:21:25.603991+00:00"
+      "scraped_at": "2026-07-28T10:37:38.826148+00:00"
     },
     {
       "category_id": "paper_baozhi",
@@ -197,7 +353,7 @@
       "sources": [
         "行情参考价（模拟）"
       ],
-      "scraped_at": "2026-07-28T03:21:25.603980+00:00"
+      "scraped_at": "2026-07-28T10:37:38.825970+00:00"
     },
     {
       "category_id": "paper_huangban",
@@ -209,170 +365,14 @@
       "sources": [
         "行情参考价（模拟）"
       ],
-      "scraped_at": "2026-07-28T03:21:25.603971+00:00"
-    },
-    {
-      "category_id": "paper_hunhe",
-      "name": "混合废纸",
-      "buy_price": 1048,
-      "sell_price": 1158,
-      "raw_avg_price": 1103,
-      "sample_count": 1,
-      "sources": [
-        "行情参考价（模拟）"
-      ],
-      "scraped_at": "2026-07-28T03:21:25.603994+00:00"
-    },
-    {
-      "category_id": "paper_shuzhi",
-      "name": "书纸",
-      "buy_price": 1276,
-      "sell_price": 1378,
-      "raw_avg_price": 1327,
-      "sample_count": 1,
-      "sources": [
-        "行情参考价（模拟）"
-      ],
-      "scraped_at": "2026-07-28T03:21:25.603977+00:00"
-    },
-    {
-      "category_id": "paper_waiboxhi",
-      "name": "瓦楞纸",
-      "buy_price": 1300,
-      "sell_price": 1423,
-      "raw_avg_price": 1362,
-      "sample_count": 1,
-      "sources": [
-        "行情参考价（模拟）"
-      ],
-      "scraped_at": "2026-07-28T03:21:25.603987+00:00"
-    },
-    {
-      "category_id": "paper_zhixiang",
-      "name": "纸箱",
-      "buy_price": 1396,
-      "sell_price": 1519,
-      "raw_avg_price": 1458,
-      "sample_count": 1,
-      "sources": [
-        "行情参考价（模拟）"
-      ],
-      "scraped_at": "2026-07-28T03:21:25.603984+00:00"
-    },
-    {
-      "category_id": "plastic_abs",
-      "name": "ABS",
-      "buy_price": 8660,
-      "sell_price": 8997,
-      "raw_avg_price": 8828,
-      "sample_count": 1,
-      "sources": [
-        "行情参考价（模拟）"
-      ],
-      "scraped_at": "2026-07-28T03:21:25.604012+00:00"
-    },
-    {
-      "category_id": "plastic_pc",
-      "name": "PC塑料",
-      "buy_price": 9338,
-      "sell_price": 9701,
-      "raw_avg_price": 9520,
-      "sample_count": 1,
-      "sources": [
-        "行情参考价（模拟）"
-      ],
-      "scraped_at": "2026-07-28T03:21:25.604015+00:00"
-    },
-    {
-      "category_id": "plastic_pe",
-      "name": "PE膜",
-      "buy_price": 3799,
-      "sell_price": 4013,
-      "raw_avg_price": 3906,
-      "sample_count": 1,
-      "sources": [
-        "行情参考价（模拟）"
-      ],
-      "scraped_at": "2026-07-28T03:21:25.604001+00:00"
-    },
-    {
-      "category_id": "plastic_pet",
-      "name": "PET瓶片",
-      "buy_price": 4178,
-      "sell_price": 4409,
-      "raw_avg_price": 4294,
-      "sample_count": 1,
-      "sources": [
-        "行情参考价（模拟）"
-      ],
-      "scraped_at": "2026-07-28T03:21:25.603998+00:00"
-    },
-    {
-      "category_id": "plastic_pp",
-      "name": "PP编织袋",
-      "buy_price": 3554,
-      "sell_price": 3806,
-      "raw_avg_price": 3680,
-      "sample_count": 1,
-      "sources": [
-        "行情参考价（模拟）"
-      ],
-      "scraped_at": "2026-07-28T03:21:25.604004+00:00"
-    },
-    {
-      "category_id": "plastic_ps",
-      "name": "PS塑料",
-      "buy_price": 5905,
-      "sell_price": 6261,
-      "raw_avg_price": 6083,
-      "sample_count": 1,
-      "sources": [
-        "行情参考价（模拟）"
-      ],
-      "scraped_at": "2026-07-28T03:21:25.604019+00:00"
-    },
-    {
-      "category_id": "plastic_pvc",
-      "name": "PVC硬质",
-      "buy_price": 3126,
-      "sell_price": 3356,
-      "raw_avg_price": 3241,
-      "sample_count": 1,
-      "sources": [
-        "行情参考价（模拟）"
-      ],
-      "scraped_at": "2026-07-28T03:21:25.604008+00:00"
-    },
-    {
-      "category_id": "rubber_hose",
-      "name": "废胶管",
-      "buy_price": 1770,
-      "sell_price": 1941,
-      "raw_avg_price": 1856,
-      "sample_count": 1,
-      "sources": [
-        "行情参考价（模拟）"
-      ],
-      "scraped_at": "2026-07-28T03:21:25.604075+00:00"
-    },
-    {
-      "category_id": "rubber_tire",
-      "name": "废轮胎",
-      "buy_price": 1215,
-      "sell_price": 1401,
-      "raw_avg_price": 1308,
-      "sample_count": 1,
-      "sources": [
-        "行情参考价（模拟）"
-      ],
-      "scraped_at": "2026-07-28T03:21:25.604072+00:00"
+      "scraped_at": "2026-07-28T10:37:38.825905+00:00"
     }
   ],
   "logs": [
     {
-      "website_name": "金投网-废金属行情",
+      "website_name": "金投网-废品行情",
       "status": "success",
-      "items_scraped": 1163,
+      "items_scraped": 2059,
       "error_msg": ""
     }
   ]

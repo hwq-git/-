@@ -435,6 +435,7 @@ def parse_api_prices(json_text: str, config: dict) -> dict:
 
 # 金投网品名 → 我们的品类ID 映射表
 JINTOU_CATEGORY_MAP = {
+    # === js_ 前缀：废金属 ===
     # 废铜类
     "1#光亮铜线": "metal_copper", "1#废铜": "metal_copper", "二号铜": "metal_copper",
     "马达铜": "metal_copper", "紫杂铜": "metal_copper", "破碎黄铜": "metal_copper",
@@ -454,7 +455,7 @@ JINTOU_CATEGORY_MAP = {
     "水箱紫铜管": "metal_copper", "电机线": "metal_copper", "H62黄铜板": "metal_copper",
     "H62黄铜棒": "metal_copper", "H59黄铜棒": "metal_copper",
     "废黄铜": "metal_copper", "进口柜装黄铜": "metal_copper",
-    "R410A专用紫铜管": "metal_copper", "国标成品铜线": "metal_copper",
+    "R410A专用紫铜管": "metal_copper",
 
     # 废铝类
     "破碎生铝": "metal_aluminum", "破碎熟铝": "metal_aluminum", "合金铝": "metal_aluminum",
@@ -503,6 +504,30 @@ JINTOU_CATEGORY_MAP = {
 
     # 废镍类
     "纯镍废料": "metal_steel", "1#镍": "metal_steel", "低镍": "metal_steel",
+
+    # === other_ 前缀：废纸/塑料/玻璃/橡胶 ===
+    # 废纸类
+    "废纸": "paper_hunhe", "瓦楞纸": "paper_waiboxhi", "箱板纸": "paper_zhixiang",
+    "再生箱板纸": "paper_zhixiang", "白卡纸": "paper_baizhibian", "双胶纸": "paper_shuzhi",
+
+    # 废塑料类
+    "ABS": "plastic_abs", "PP": "plastic_pp", "PC": "plastic_pc",
+    "PET": "plastic_pet", "PET聚酯瓶片": "plastic_pet", "PETG颗粒": "plastic_pet",
+    "HDPE": "plastic_pe", "LDPE": "plastic_pe", "LLDPE": "plastic_pe", "PE": "plastic_pe",
+    "PVC": "plastic_pvc", "PVC（聚氯乙烯树脂）": "plastic_pvc", "聚氯乙烯树脂": "plastic_pvc",
+    "聚氯乙烯树脂PVC": "plastic_pvc", "聚氯乙烯树脂粉": "plastic_pvc", "PVC糊树脂": "plastic_pvc",
+    "PS": "plastic_ps", "GPPS": "plastic_ps", "HIPS": "plastic_ps", "EPS": "plastic_ps",
+    "POM": "plastic_abs", "PA6": "plastic_abs", "PA66": "plastic_abs",
+    "PMMA": "plastic_pc", "EVA": "plastic_pe", "PBT": "plastic_abs",
+
+    # 废橡胶类
+    "天然橡胶": "rubber_tire", "丁苯橡胶": "rubber_tire", "顺丁橡胶": "rubber_tire",
+    "丁腈橡胶": "rubber_hose", "聚异丁烯橡胶": "rubber_tire",
+    "硅橡胶": "rubber_hose", "室温硫化硅橡胶": "rubber_hose", "模具硅橡胶": "rubber_hose",
+    "橡胶促进剂": "rubber_tire", "橡胶防老剂": "rubber_tire",
+
+    # 废玻璃类
+    "玻璃": "glass_flat", "水玻璃": "glass_flat", "防火玻璃用钾明矾": "glass_flat",
 }
 
 
@@ -527,75 +552,93 @@ def match_jintou_name(name: str) -> Optional[str]:
 
 
 def crawl_jintou_api(config: dict) -> dict:
-    """爬取金投网API - 批量获取废金属行情"""
+    """爬取金投网API - 双通道 (js_废金属 + other_废纸塑料橡胶玻璃)"""
     api_config = config.get("api_config", {})
     base_url = config.get("baseUrl", config.get("base_url", ""))
-    id_prefix = api_config.get("id_prefix", "js_")
     batch_size = api_config.get("batch_size", 100)
-    id_start, id_end = api_config.get("id_range", [0, 1500])
+
+    # 双通道配置
+    channels = [
+        {"prefix": "js_", "range": [0, 1500], "desc": "废金属"},
+        {"prefix": "other_", "range": [0, 10000], "desc": "废纸/塑料/橡胶/玻璃"},
+    ]
+    # 允许JSON覆盖
+    if api_config.get("channels"):
+        channels = api_config["channels"]
 
     all_results = []
     session = build_session()
-    batch_count = 0
     total_fetched = 0
     batch_errors = 0
 
-    for start in range(id_start, id_end, batch_size):
-        ids = [f"{id_prefix}{i}" for i in range(start, min(start + batch_size, id_end))]
-        id_str = ",".join(ids)
-        url = f"{base_url}?ids={id_str}"
+    for channel in channels:
+        prefix = channel["prefix"]
+        id_start, id_end = channel["range"]
+        desc = channel.get("desc", prefix)
+        channel_fetched = 0
 
-        try:
-            resp = session.get(url, timeout=15)
-            if resp.status_code != 200:
-                batch_errors += 1
-                continue
-            data = resp.json()
-            if data.get("returnCode", -1) != 0:
-                batch_errors += 1
-                continue
-            items = data.get("data", [])
-            for item in items:
-                name = item.get("name", "")
-                price_str = str(item.get("price", "0"))
-                change_str = str(item.get("change", "0"))
-                region = item.get("region", "")
-                unit = item.get("unit", "元/吨")
+        print(f"  📡 [{desc}] 扫描 {prefix}{id_start}-{id_end}...")
 
-                cat_id = match_jintou_name(name)
-                if not cat_id:
+        for start in range(id_start, id_end, batch_size):
+            ids = [f"{prefix}{i}" for i in range(start, min(start + batch_size, id_end))]
+            id_str = ",".join(ids)
+            url = f"{base_url}?ids={id_str}"
+
+            try:
+                resp = session.get(url, timeout=15)
+                if resp.status_code != 200:
+                    batch_errors += 1
                     continue
-
-                price = parse_price(price_str)
-                if price is None or price <= 0:
+                data = resp.json()
+                if data.get("returnCode", -1) != 0:
+                    batch_errors += 1
                     continue
+                items = data.get("data", [])
+                for item in items:
+                    name = item.get("name", "")
+                    price_str = str(item.get("price", "0"))
+                    change_str = str(item.get("change", "0"))
+                    region = item.get("region", "")
+                    unit = item.get("unit", "元/吨")
 
-                try:
-                    change = float(change_str) if change_str else 0.0
-                except ValueError:
-                    change = 0.0
+                    cat_id = match_jintou_name(name)
+                    if not cat_id:
+                        continue
 
-                full_name = f"{name}({region})" if region else name
-                all_results.append({
-                    "category_id": cat_id,
-                    "category_name": CATEGORY_NAMES.get(cat_id, name),
-                    "name": full_name,
-                    "buy_price": round(price * 0.97),
-                    "sell_price": round(price * 1.01),
-                    "raw_price": price,
-                    "change": change,
-                    "source_detail": "金投网",
-                    "date_text": region,
-                })
-            total_fetched += len(items)
-            batch_count += 1
+                    price = parse_price(price_str)
+                    if price is None or price <= 0:
+                        continue
 
-        except Exception as e:
-            batch_errors += 1
+                    try:
+                        change = float(change_str) if change_str else 0.0
+                    except ValueError:
+                        change = 0.0
 
-        # 批次间延迟
-        if start + batch_size < id_end:
-            time.sleep(0.3)
+                    full_name = f"{name}({region})" if region else name
+                    all_results.append({
+                        "category_id": cat_id,
+                        "category_name": CATEGORY_NAMES.get(cat_id, name),
+                        "name": full_name,
+                        "buy_price": round(price * 0.97),
+                        "sell_price": round(price * 1.01),
+                        "raw_price": price,
+                        "change": change,
+                        "source_detail": "金投网",
+                        "date_text": region,
+                    })
+                channel_fetched += len(items)
+
+            except Exception as e:
+                batch_errors += 1
+
+            # 批次间微延迟
+            if start + batch_size < id_end:
+                time.sleep(0.15)
+
+        total_fetched += channel_fetched
+        if channel_fetched > 0:
+            matched = len([r for r in all_results if r.get("_channel") == prefix]) if False else len(all_results)
+            print(f"     ✅ {channel_fetched} 条")
 
     name = config.get("name", config.get("website_name", "金投网"))
     log = {
@@ -613,7 +656,11 @@ def crawl_jintou_api(config: dict) -> dict:
 
     if all_results:
         log["results"] = all_results
-        print(f"     ✅ {total_fetched} 条API数据 → {len(all_results)} 条匹配品类 (共{total_fetched}条原始)")
+        # 统计各品类数量
+        from collections import Counter
+        cat_counts = Counter(r["category_id"] for r in all_results)
+        cat_summary = ", ".join(f"{CATEGORY_NAMES.get(k,k)}:{v}" for k,v in cat_counts.most_common())
+        print(f"     ✅ 总计 {len(all_results)} 条匹配 ({cat_summary})")
     else:
         print(f"     ❌ {total_fetched} 条数据但无可匹配品类")
 
