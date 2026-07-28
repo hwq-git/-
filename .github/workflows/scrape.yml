@@ -1,0 +1,53 @@
+name: 废品价格爬虫
+
+on:
+  schedule:
+    # 每天 8:00, 12:00, 16:00, 20:00 (UTC+8)
+    - cron: "0 0,4,8,12 * * *"
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: write  # 允许推送更新
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 安装依赖
+        run: |
+          pip install -r scripts/requirements.txt
+
+      - name: 运行爬虫
+        run: |
+          python scripts/scraper.py
+
+      - name: 检查输出
+        id: check_output
+        run: |
+          if [ -f data/scraped-prices.json ]; then
+            CATEGORIES=$(python -c "import json; d=json.load(open('data/scraped-prices.json')); print(d.get('total_categories', 0))")
+            echo "categories=$CATEGORIES" >> $GITHUB_OUTPUT
+            echo "Scraped $CATEGORIES categories"
+          else
+            echo "categories=0" >> $GITHUB_OUTPUT
+            echo "No output file generated"
+          fi
+
+      - name: 提交更新
+        if: steps.check_output.outputs.categories != '0'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/scraped-prices.json
+          git diff --staged --quiet || git commit -m "📊 更新废品价格数据 ($(date +%Y-%m-%d)) [skip ci]"
+          git push

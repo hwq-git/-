@@ -246,6 +246,7 @@ button { cursor: pointer; border: none; background: none; color: inherit; }
   font-size: 12px;
 }
 .source-tag.crawler { background: rgba(26,115,232,0.1); color: var(--primary); }
+.source-tag.simulated { background: rgba(255,152,0,0.12); color: #ef6c00; }
 .source-tag.user { background: rgba(229,57,53,0.1); color: var(--up); }
 .source-tag.share { background: rgba(76,175,80,0.1); color: var(--down); }
 .source-tag.seed { background: rgba(158,158,158,0.12); color: var(--text-light); }

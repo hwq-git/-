@@ -2,17 +2,17 @@
  * Service Worker - 离线缓存
  * 缓存所有静态资源，断网时仍可使用
  */
-const CACHE_NAME = 'feipin-v1.0.2';
+const CACHE_NAME = 'feipin-v1.0.4';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
-  './css/style.css',
-  './js/db.js',
-  './js/seed-data.js',
-  './js/crawler.js',
-  './js/charts.js',
-  './js/export.js',
-  './js/app.js',
+  './css/style.css?v=1.0.4',
+  './js/db.js?v=1.0.4',
+  './js/seed-data.js?v=1.0.4',
+  './js/crawler.js?v=1.0.4',
+  './js/charts.js?v=1.0.4',
+  './js/export.js?v=1.0.4',
+  './js/app.js?v=1.0.4',
   './manifest.json',
   './data/crawler-rules.json',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
@@ -47,8 +47,12 @@ self.addEventListener('fetch', (event) => {
   // 只处理 GET 请求
   if (event.request.method !== 'GET') return;
 
-  // 爬虫请求不走缓存（需要实时数据）
   const url = new URL(event.request.url);
+  
+  // 跳过非 http/https 协议（如 chrome-extension://）
+  if (!url.protocol.startsWith('http')) return;
+
+  // 爬虫请求不走缓存（需要实时数据）
   const isCrawlerRequest = url.hostname.includes('allorigins.win') ||
                            url.hostname.includes('corsproxy.io') ||
                            url.hostname.includes('codetabs.com') ||

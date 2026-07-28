@@ -49,9 +49,15 @@ const DB = (() => {
       const db = getDB();
       const tx = db.transaction(storeName, 'readwrite');
       const store = tx.objectStore(storeName);
-      items.forEach(item => store.put(item));
-      tx.oncomplete = () => resolve(items.length);
-      tx.onerror = () => reject(tx.error);
+      let count = 0;
+      const total = items.length;
+      items.forEach(item => {
+        try { store.put(item); count++; }
+        catch (e) { console.warn('[DB] put error:', e); }
+      });
+      tx.oncomplete = () => resolve(count);
+      tx.onerror = () => reject(tx.error || new Error('Transaction error'));
+      tx.onabort = () => reject(new Error('Transaction aborted'));
     });
   }
 

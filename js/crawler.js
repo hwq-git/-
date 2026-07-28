@@ -536,19 +536,27 @@ const Crawler = (() => {
 
         console.log(`[Crawler] ✅ 从 ${src} 获取 ${data.prices.length} 条价格`);
 
-        // 入库
+        // 入库 —— 根据 sources 字段区分真实爬取 vs 模拟补齐
         const now = new Date().toISOString();
-        const records = data.prices.map(p => ({
-          id: `remote_${p.category_id}_${now}`,
-          category_id: p.category_id,
-          buy_price: p.buy_price,
-          sell_price: p.sell_price,
-          region_code: regionCode,
-          source: 'crawler',
-          source_detail: data.scraped_at ? `远程数据 · ${new Date(data.scraped_at).toLocaleDateString('zh-CN')}` : '远程数据',
-          recorded_at: now,
-          created_at: now,
-        }));
+        const records = data.prices.map(p => {
+          const sources = p.sources || [];
+          const isSimulated = sources.some(s => s.includes('模拟')) || (p.sample_count || 0) <= 1;
+          const realSource = sources.filter(s => !s.includes('模拟'))[0] || '未知来源';
+          const sampleCount = p.sample_count || 1;
+          return {
+            id: `remote_${p.category_id}_${now}`,
+            category_id: p.category_id,
+            buy_price: p.buy_price,
+            sell_price: p.sell_price,
+            region_code: regionCode,
+            source: isSimulated ? 'simulated' : 'crawler',
+            source_detail: isSimulated
+              ? '行情参考价（模拟）'
+              : `${realSource} · ${sampleCount}样本`,
+            recorded_at: now,
+            created_at: now,
+          };
+        });
 
         await DB.bulkPut('prices', records);
         allResults.push(...records);
@@ -655,8 +663,8 @@ const Crawler = (() => {
         buy_price: currentBuy,
         sell_price: currentSell,
         region_code: regionCode,
-        source: 'crawler',
-        source_detail: '行情参考价',
+        source: 'simulated',
+        source_detail: '行情参考价（模拟）',
         recorded_at: now.toISOString(),
         created_at: now.toISOString(),
       });

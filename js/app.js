@@ -14,34 +14,60 @@ const App = (() => {
 
   // ===== 初始化 =====
   async function init() {
+    const loadingEl = document.getElementById('status-bar');
+    function progress(msg) {
+      console.log('[App]', msg);
+      if (loadingEl) loadingEl.innerHTML = '<span class="status-dot"></span><span>' + msg + '</span>';
+    }
+
     try {
+      progress('初始化数据库...');
       await DB.init();
+
+      progress('加载种子数据...');
       await initSeedData();
+
+      progress('加载收藏...');
       await loadFavorites();
+
+      progress('渲染行情...');
       await renderMarket();
+
+      progress('渲染记账...');
       await renderLedger();
+
+      progress('初始化趋势图...');
       await initTrendControls();
+
+      progress('加载设置...');
       await renderSettings();
+
       await Crawler.restoreStatusBar();
       await Crawler.startScheduler();
 
-      const lastCrawl = await DB.getSetting('last_crawl_at', null);
-      if (lastCrawl) {
-        const elapsed = Date.now() - new Date(lastCrawl).getTime();
-        if (elapsed > 2 * 3600 * 1000) {
-          const enabled = await DB.getSetting('crawler_enabled', true);
-          if (enabled) {
-            console.log('[App] 数据较旧，自动触发爬取');
-            Crawler.runCrawl(false);
+      // 检查是否需要刷新数据（非阻塞）
+      setTimeout(async () => {
+        try {
+          const lastCrawl = await DB.getSetting('last_crawl_at', null);
+          if (lastCrawl) {
+            const elapsed = Date.now() - new Date(lastCrawl).getTime();
+            if (elapsed > 2 * 3600 * 1000) {
+              const enabled = await DB.getSetting('crawler_enabled', true);
+              if (enabled) {
+                console.log('[App] 数据较旧，自动触发爬取');
+                Crawler.runCrawl(false);
+              }
+            }
           }
-        }
-      }
+        } catch (e) { console.warn('[App] 爬取检查失败:', e); }
+      }, 1000);
 
       registerSW();
       await fillCategorySelects();
       console.log('[App] 初始化完成');
     } catch (e) {
       console.error('[App] 初始化失败:', e);
+      if (loadingEl) loadingEl.innerHTML = '<span class="status-dot failed"></span><span>加载失败，请刷新页面</span>';
       showToast('❌ 初始化失败: ' + e.message);
     }
   }
@@ -123,6 +149,7 @@ const App = (() => {
       // ✅ 增强：显示具体数据来源
       const sourceMap = {
         crawler: { tag: '🕷️', label: latest.source_detail || '爬虫', class: 'crawler' },
+        simulated: { tag: '📊', label: latest.source_detail || '模拟', class: 'simulated' },
         user: { tag: '✏️', label: '我记的', class: 'user' },
         share: { tag: '👥', label: '分享', class: 'share' },
         seed: { tag: '📦', label: '参考', class: 'seed' },
@@ -338,9 +365,14 @@ const App = (() => {
     const wifiOnly = await DB.getSetting('crawler_wifi_only', true);
     const interval = await DB.getSetting('crawler_interval_minutes', 120);
 
-    document.getElementById('setting-crawler-enabled').checked = crawlerEnabled;
-    document.getElementById('setting-wifi-only').checked = wifiOnly;
-    document.getElementById('setting-interval').value = interval;
+    const enabledEl = document.getElementById('setting-crawler-enabled');
+    if (enabledEl) enabledEl.checked = crawlerEnabled;
+
+    const wifiEl = document.getElementById('setting-wifi-only');
+    if (wifiEl) wifiEl.checked = wifiOnly;
+
+    const intervalEl = document.getElementById('setting-interval');
+    if (intervalEl) intervalEl.value = interval;
 
     await renderCrawlerStatus();
     await renderUserPrices();
@@ -408,7 +440,8 @@ const App = (() => {
 
     const allPrices = await DB.getAll('prices');
     const userCount = allPrices.filter(p => p.source === 'user').length;
-    const autoCount = allPrices.filter(p => p.source === 'crawler' || p.source === 'seed').length;
+    const realCount = allPrices.filter(p => p.source === 'crawler').length;
+    const simCount = allPrices.filter(p => p.source === 'simulated' || p.source === 'seed').length;
 
     el.innerHTML = `
       <div class="crawler-status-item">
@@ -424,11 +457,14 @@ const App = (() => {
         <span class="value">${userCount} 条</span>
       </div>
       <div class="crawler-status-item">
-        <span class="label">行情数据</span>
-        <span class="value">${autoCount} 条</span>
+        <span class="label">🕷️ 真实行情</span>
+        <span class="value" style="color:var(--primary);">${realCount} 条</span>
+      </div>
+      <div class="crawler-status-item">
+        <span class="label">📊 模拟行情</span>
+        <span class="value" style="color:#ef6c00;">${simCount} 条</span>
       </div>
     `;
-  }
   }
 
   async function updateSetting(key, value) {

@@ -26,8 +26,15 @@
 │   ├── charts.js           # 趋势图渲染（Chart.js）
 │   ├── export.js           # 数据导出/导入（JSON/Excel）
 │   └── app.js              # 主应用逻辑（4 Tab + 弹窗 + 交互）
-└── data/
-    └── crawler-rules.json  # 爬虫规则配置（JSON，可热更新）
+├── scripts/
+│   ├── scraper.py          # 🆕 Python 爬虫（requests + BeautifulSoup4）
+│   ├── scraper.js          # Puppeteer 爬虫（备用）
+│   └── requirements.txt    # Python 依赖
+├── data/
+│   ├── crawler-rules.json  # 爬虫规则配置（JSON，可热更新）
+│   └── scraped-prices.json # 爬虫产出数据
+└── .github/workflows/
+    └── scrape.yml          # 🆕 GitHub Actions 定时爬取
 ```
 
 ## MVP 功能清单
@@ -49,11 +56,41 @@
 3. 🥉 App 自带种子数据（出厂内置3个月参考价）
 
 ## 运行方式
+
+### PWA 前端
 ```bash
 # 本地预览
 python -m http.server 8080
 # 浏览器访问 http://localhost:8080
 ```
+
+### Python 爬虫
+```bash
+# 安装依赖
+pip install -r scripts/requirements.txt
+
+# 运行爬虫
+python scripts/scraper.py
+
+# 输出文件: data/scraped-prices.json
+```
+
+### GitHub Actions 自动化（推荐）
+GitHub Actions 每天 8:00/12:00/16:00/20:00 (UTC+8) 自动运行 Python 爬虫，
+将抓取结果写入 `data/scraped-prices.json` 并提交到仓库。
+PWA 前端优先加载此文件作为价格数据源，实现零服务器成本的实时行情更新。
+
+数据流：`Python爬虫 → GitHub Actions → scraped-prices.json → PWA 加载`
+
+## Python 爬虫特性
+- 🐍 **requests + BeautifulSoup4 + lxml**：稳定可靠的 HTML 解析
+- 📡 **双模式支持**：HTML CSS选择器 / API JSON 解析
+- 🔐 **认证支持**：Cookie / Token 注入（读取 crawler-rules.json 中的 auth 配置）
+- 🎲 **随机 UA 轮换**：6个 User-Agent 随机切换
+- ⏱️ **智能速率限制**：站点间 2~5 秒随机延迟 + 失败自动重试
+- 📊 **多源合并去重**：同一品类多站点数据取中位数
+- 📁 **统一输出格式**：与 JS 端 `crawler.js` 兼容的 `scraped-prices.json`
+- 🤖 **GitHub Actions 定时**：每日 4 次自动运行
 
 ## 后续可扩展（第二阶段）
 - 价格预警（本地通知）
