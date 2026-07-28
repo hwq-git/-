@@ -1,25 +1,26 @@
 {
   "name": "废品行情通 - 实时回收价格查询",
   "short_name": "废品行情",
-  "description": "手机端爬虫实时抓取废品回收价格，离线可用，零服务器成本",
+  "description": "废品回收价格实时查询，支持离线使用",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f5f6f8",
+  "background_color": "#1a73e8",
   "theme_color": "#1a73e8",
   "scope": "./",
   "lang": "zh-CN",
+  "id": "com.feipin.hangqing",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='42' fill='%231a73e8'/><text x='50%25' y='50%25' font-size='110' text-anchor='middle' dy='.35em'>♻️</text></svg>",
+      "src": "./icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='112' fill='%231a73e8'/><text x='50%25' y='50%25' font-size='300' text-anchor='middle' dy='.35em'>♻️</text></svg>",
+      "src": "./icon-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ],
