@@ -129,19 +129,21 @@ const Share = (() => {
   function renderQRCodes(container, compressedData) {
     container.innerHTML = '';
 
-    // 如果数据小，一个二维码就够了
-    if (compressedData.length <= 2800) {
+    const CHUNK_SIZE = 400;  // 每页最多400字符，保证扫码清晰
+
+    // 单页数据
+    if (compressedData.length <= CHUNK_SIZE) {
       const div = document.createElement('div');
       div.className = 'qr-code';
       container.appendChild(div);
       try {
         new QRCode(div, {
           text: compressedData,
-          width: 240,
-          height: 240,
+          width: 260,
+          height: 260,
           colorDark: '#000000',
           colorLight: '#ffffff',
-          correctLevel: QRCode.CorrectLevel.L,
+          correctLevel: QRCode.CorrectLevel.M,  // 中等纠错
         });
       } catch (e) {
         div.innerHTML = '<div class="qr-error">QR生成失败</div>';
@@ -149,33 +151,33 @@ const Share = (() => {
       return;
     }
 
-    // 分页显示（每2800字符一页）
-    const totalPages = Math.ceil(compressedData.length / 2800);
+    // 分页显示
+    const totalPages = Math.ceil(compressedData.length / CHUNK_SIZE);
     const pageInfo = document.createElement('div');
-    pageInfo.style.cssText = 'text-align:center;margin-bottom:12px;font-size:13px;color:#666;';
-    pageInfo.textContent = `数据较大，共 ${totalPages} 个二维码，请依次扫描`;
+    pageInfo.style.cssText = 'text-align:center;margin-bottom:12px;font-size:14px;color:#666;font-weight:bold;';
+    pageInfo.textContent = `数据共 ${totalPages} 页，请依次扫描`;
     container.appendChild(pageInfo);
 
     for (let i = 0; i < totalPages; i++) {
-      const chunk = `P${i+1}/${totalPages}|` + compressedData.substring(i * 2800, (i + 1) * 2800);
+      const chunk = `P${i+1}/${totalPages}|` + compressedData.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
       const div = document.createElement('div');
       div.className = 'qr-code';
       div.style.marginBottom = '16px';
       container.appendChild(div);
 
       const label = document.createElement('div');
-      label.style.cssText = 'text-align:center;font-size:12px;color:#888;margin-bottom:4px;';
-      label.textContent = `第 ${i+1}/${totalPages} 页`;
+      label.style.cssText = 'text-align:center;font-size:13px;color:#1a73e8;margin-bottom:6px;font-weight:bold;';
+      label.textContent = `📄 第 ${i+1}/${totalPages} 页`;
       container.appendChild(label);
 
       try {
         new QRCode(div, {
           text: chunk,
-          width: 240,
-          height: 240,
+          width: 260,
+          height: 260,
           colorDark: '#000000',
           colorLight: '#ffffff',
-          correctLevel: QRCode.CorrectLevel.L,
+          correctLevel: QRCode.CorrectLevel.M,
         });
       } catch (e) {
         div.innerHTML = '<div class="qr-error">生成失败</div>';
