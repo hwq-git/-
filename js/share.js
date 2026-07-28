@@ -191,16 +191,6 @@ const Share = (() => {
 
     modal.classList.remove('hidden');
 
-    // 动态加载 html5-qrcode
-    if (typeof Html5Qrcode === 'undefined') {
-      try {
-        await loadScript('https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js');
-      } catch (e) {
-        reader.innerHTML = '<div class="scan-error">⚠️ 扫码库加载失败，请检查网络</div>';
-        return;
-      }
-    }
-
     reader.innerHTML = '<div id="qr-reader-inner" style="width:100%;max-width:300px;margin:0 auto;"></div>';
 
     try {
