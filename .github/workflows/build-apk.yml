@@ -17,17 +17,25 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: "temurin", java-version: "17" }
 
-      - uses: android-actions/setup-android@v3
-  
       - name: 准备 www
         run: |
-          mkdir -p www && cp index.html manifest.json sw.js www/
+          mkdir -p www
+          cp index.html manifest.json sw.js www/
           cp -r js css data www/
-          rm -rf www/scripts/requirements.txt www/scripts/scraper.py
 
       - run: npm install @capacitor/core @capacitor/cli @capacitor/android
-      - run: npx cap add android && npx cap sync android
-      - run: echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+      - run: npx cap add android
+      - run: npx cap sync android
+
+      - name: 设置 Android SDK
+        run: |
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+          # 安装所需 SDK 组件（如果缺失）
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses 2>/dev/null || true
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" "build-tools;35.0.0" 2>/dev/null || true
+          echo "SDK 路径: $ANDROID_HOME"
 
       - name: 编译 APK
         working-directory: android
