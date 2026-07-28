@@ -1,6 +1,6 @@
 {
   "appId": "com.feipin.hangqing",
   "appName": "废品行情通",
-  "webDir": ".",
+  "webDir": "www",
   "bundledWebRuntime": false
 }

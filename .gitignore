@@ -4,3 +4,7 @@ node_modules/
 android/
 .capacitor/
 scripts/node_modules/
+node_modules/
+android/
+www/
+*.apk
