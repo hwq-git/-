@@ -1,52 +1,47 @@
 name: 构建 APK
 
 on:
-  workflow_dispatch:  # 手动触发
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: 设置 Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
 
-      - name: 设置 Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: "temurin"
-          java-version: "17"
+      - uses: actions/setup-java@v4
+        with: { distribution: "temurin", java-version: "17" }
 
-      - name: 准备 www 目录
+      - name: 准备 www
         run: |
-          mkdir -p www
-          cp index.html manifest.json sw.js www/
+          mkdir -p www && cp index.html manifest.json sw.js www/
           cp -r js css data www/
           rm -rf www/scripts/requirements.txt www/scripts/scraper.js www/scripts/scraper.py
 
       - name: 安装 Capacitor
-        run: |
-          npm install --save-dev @capacitor/cli @capacitor/android
+        run: npm install @capacitor/core @capacitor/cli @capacitor/android
 
-      - name: 构建 Android 项目
-        run: |
-          npx cap add android
-          npx cap sync android
+      - name: 生成 Android 项目
+        run: npx cap add android && npx cap sync android
 
-      - name: 编译 APK (Debug)
+      - name: 设置 local.properties
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+          echo "ANDROID_HOME=$ANDROID_HOME"
+
+      - name: 编译 APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon -Dorg.gradle.jvmargs="-Xmx2g"
 
       - name: 上传 APK
         uses: actions/upload-artifact@v4
         with:
-          name: 废品行情通-debug
+          name: 废品行情通
           path: android/app/build/outputs/apk/debug/app-debug.apk
