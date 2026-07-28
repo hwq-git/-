@@ -649,3 +649,11 @@ button { cursor: pointer; border: none; background: none; color: inherit; }
   .modal { max-width: 500px; border-radius: 20px; }
   .modal-overlay { align-items: center; }
 }
+
+/* ===== 二维码分享 ===== */
+.qr-code { display: inline-block; padding: 12px; background: #fff; border-radius: 12px; }
+.qr-code img, .qr-code canvas { display: block; border-radius: 8px; }
+.qr-error, .scan-error { color: #e53935; padding: 40px 20px; font-size: 15px; text-align: center; }
+.qr-error small, .scan-error small { font-size: 12px; color: #888; }
+#qr-reader { min-height: 200px; display: flex; align-items: center; justify-content: center; }
+#qr-reader video { border-radius: 12px; max-width: 100%; }

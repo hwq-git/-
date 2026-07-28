@@ -12,6 +12,7 @@
   <title>废品行情通 - 实时回收价格查询</title>
   <link rel="stylesheet" href="css/style.css?v=1.0.4">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -153,6 +154,10 @@
       <button class="action-btn" onclick="Export.exportJSON()">📤 导出数据 (JSON)</button>
       <button class="action-btn" onclick="Export.exportExcel()">📊 导出Excel</button>
       <button class="action-btn" onclick="Export.importJSON()">📥 导入数据</button>
+      <div style="display:flex;gap:10px;margin-top:10px;">
+        <button class="action-btn" onclick="Share.showShareQR()" style="flex:1;background:#1a73e8;color:#fff;">📱 二维码分享</button>
+        <button class="action-btn" onclick="Share.startScan()" style="flex:1;background:#34a853;color:#fff;">📷 扫码导入</button>
+      </div>
     </div>
 
     <!-- 关于 -->
@@ -286,6 +291,35 @@
     </div>
   </div>
 
+  <!-- ===== 弹窗：二维码分享 ===== -->
+  <div id="modal-share-qr" class="modal-overlay hidden">
+    <div class="modal" style="max-width:360px;">
+      <div class="modal-header">
+        <h3>📱 二维码分享</h3>
+        <button class="close-btn" onclick="document.getElementById('modal-share-qr').classList.add('hidden')">×</button>
+      </div>
+      <div class="modal-body" style="text-align:center;">
+        <div id="qr-container"></div>
+        <div id="qr-summary" style="margin-top:12px;font-size:13px;color:#666;"></div>
+        <div style="margin-top:8px;font-size:12px;color:#999;">让隔壁老王用「扫码导入」扫描此二维码</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 弹窗：扫码导入 ===== -->
+  <div id="modal-scan-qr" class="modal-overlay hidden">
+    <div class="modal" style="max-width:360px;">
+      <div class="modal-header">
+        <h3>📷 扫码导入</h3>
+        <button class="close-btn" onclick="Share.stopScan()">×</button>
+      </div>
+      <div class="modal-body" style="text-align:center;">
+        <div id="qr-reader"></div>
+        <div style="margin-top:10px;font-size:12px;color:#999;">对准二维码自动识别</div>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== Toast 提示 ===== -->
   <div id="toast" class="toast" style="display:none;"></div>
 
@@ -297,6 +331,7 @@
   <script src="js/crawler.js?v=1.0.4"></script>
   <script src="js/charts.js?v=1.0.4"></script>
   <script src="js/export.js?v=1.0.4"></script>
-  <script src="js/app.js?v=1.0.4"></script>
+  <script src="js/share.js?v=1.0.5"></script>
+  <script src="js/app.js?v=1.0.5"></script>
 </body>
 </html>
