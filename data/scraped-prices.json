@@ -1,11 +1,11 @@
 {
   "version": "2.1.0",
-  "scraped_at": "2026-07-28T11:42:13.315739+00:00",
+  "scraped_at": "2026-07-28T12:16:23.735590+00:00",
   "total_categories": 30,
   "total_raw": 2059,
   "success_sites": 1,
   "total_sites": 1,
-  "data_source": "真实+模拟",
+  "data_source": "真实22+推导3+模拟5",
   "prices": [
     {
       "category_id": "glass_flat",
@@ -17,7 +17,7 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.315119+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735201+00:00"
     },
     {
       "category_id": "metal_aluminum",
@@ -29,7 +29,7 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.314410+00:00"
+      "scraped_at": "2026-07-28T12:16:23.734890+00:00"
     },
     {
       "category_id": "metal_copper",
@@ -41,7 +41,7 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.314495+00:00"
+      "scraped_at": "2026-07-28T12:16:23.734944+00:00"
     },
     {
       "category_id": "metal_iron",
@@ -53,7 +53,7 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.314756+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735085+00:00"
     },
     {
       "category_id": "metal_lead",
@@ -65,7 +65,7 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.314782+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735097+00:00"
     },
     {
       "category_id": "metal_steel",
@@ -77,7 +77,7 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.314934+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735116+00:00"
     },
     {
       "category_id": "metal_tin",
@@ -89,7 +89,7 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.314796+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735104+00:00"
     },
     {
       "category_id": "metal_zinc",
@@ -101,7 +101,7 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.314255+00:00"
+      "scraped_at": "2026-07-28T12:16:23.734815+00:00"
     },
     {
       "category_id": "paper_baizhibian",
@@ -113,7 +113,7 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.315112+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735197+00:00"
     },
     {
       "category_id": "paper_hunhe",
@@ -125,7 +125,7 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.315147+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735214+00:00"
     },
     {
       "category_id": "paper_shuzhi",
@@ -137,7 +137,7 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.315154+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735217+00:00"
     },
     {
       "category_id": "paper_waiboxhi",
@@ -149,7 +149,7 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.315161+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735219+00:00"
     },
     {
       "category_id": "paper_zhixiang",
@@ -161,7 +161,7 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.315168+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735222+00:00"
     },
     {
       "category_id": "plastic_abs",
@@ -173,7 +173,7 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.314986+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735140+00:00"
     },
     {
       "category_id": "plastic_pc",
@@ -185,7 +185,7 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.315083+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735183+00:00"
     },
     {
       "category_id": "plastic_pe",
@@ -197,7 +197,7 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.315031+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735156+00:00"
     },
     {
       "category_id": "plastic_pet",
@@ -209,7 +209,7 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.315094+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735189+00:00"
     },
     {
       "category_id": "plastic_pp",
@@ -221,7 +221,7 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.315070+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735177+00:00"
     },
     {
       "category_id": "plastic_ps",
@@ -233,7 +233,7 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.314949+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735121+00:00"
     },
     {
       "category_id": "plastic_pvc",
@@ -245,7 +245,7 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.315104+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735194+00:00"
     },
     {
       "category_id": "rubber_hose",
@@ -257,7 +257,7 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.315139+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735211+00:00"
     },
     {
       "category_id": "rubber_tire",
@@ -269,7 +269,43 @@
       "sources": [
         "金投网"
       ],
-      "scraped_at": "2026-07-28T11:42:13.315132+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735207+00:00"
+    },
+    {
+      "category_id": "paper_baozhi",
+      "name": "报纸",
+      "buy_price": 5292,
+      "sell_price": 5511,
+      "raw_avg_price": 5402,
+      "sample_count": 1,
+      "sources": [
+        "由书纸价格推导（参考）"
+      ],
+      "scraped_at": "2026-07-28T12:16:23.735253+00:00"
+    },
+    {
+      "category_id": "paper_huangban",
+      "name": "黄板纸",
+      "buy_price": 1362,
+      "sell_price": 1418,
+      "raw_avg_price": 1390,
+      "sample_count": 11,
+      "sources": [
+        "由混合废纸价格推导（参考）"
+      ],
+      "scraped_at": "2026-07-28T12:16:23.735257+00:00"
+    },
+    {
+      "category_id": "glass_bottle",
+      "name": "瓶玻璃",
+      "buy_price": 15,
+      "sell_price": 16,
+      "raw_avg_price": 16,
+      "sample_count": 9,
+      "sources": [
+        "由平板玻璃价格推导（参考）"
+      ],
+      "scraped_at": "2026-07-28T12:16:23.735260+00:00"
     },
     {
       "category_id": "appliance_ac",
@@ -281,7 +317,7 @@
       "sources": [
         "行情参考价（模拟）"
       ],
-      "scraped_at": "2026-07-28T11:42:13.315599+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735516+00:00"
     },
     {
       "category_id": "appliance_fridge",
@@ -293,7 +329,7 @@
       "sources": [
         "行情参考价（模拟）"
       ],
-      "scraped_at": "2026-07-28T11:42:13.315587+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735509+00:00"
     },
     {
       "category_id": "appliance_phone",
@@ -305,7 +341,7 @@
       "sources": [
         "行情参考价（模拟）"
       ],
-      "scraped_at": "2026-07-28T11:42:13.315611+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735522+00:00"
     },
     {
       "category_id": "appliance_tv",
@@ -317,7 +353,7 @@
       "sources": [
         "行情参考价（模拟）"
       ],
-      "scraped_at": "2026-07-28T11:42:13.315605+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735519+00:00"
     },
     {
       "category_id": "appliance_washer",
@@ -329,43 +365,7 @@
       "sources": [
         "行情参考价（模拟）"
       ],
-      "scraped_at": "2026-07-28T11:42:13.315593+00:00"
-    },
-    {
-      "category_id": "glass_bottle",
-      "name": "瓶玻璃",
-      "buy_price": 655,
-      "sell_price": 771,
-      "raw_avg_price": 713,
-      "sample_count": 1,
-      "sources": [
-        "行情参考价（模拟）"
-      ],
-      "scraped_at": "2026-07-28T11:42:13.315580+00:00"
-    },
-    {
-      "category_id": "paper_baozhi",
-      "name": "报纸",
-      "buy_price": 1610,
-      "sell_price": 1713,
-      "raw_avg_price": 1662,
-      "sample_count": 1,
-      "sources": [
-        "行情参考价（模拟）"
-      ],
-      "scraped_at": "2026-07-28T11:42:13.315416+00:00"
-    },
-    {
-      "category_id": "paper_huangban",
-      "name": "黄板纸",
-      "buy_price": 1443,
-      "sell_price": 1570,
-      "raw_avg_price": 1506,
-      "sample_count": 1,
-      "sources": [
-        "行情参考价（模拟）"
-      ],
-      "scraped_at": "2026-07-28T11:42:13.315399+00:00"
+      "scraped_at": "2026-07-28T12:16:23.735512+00:00"
     }
   ],
   "logs": [

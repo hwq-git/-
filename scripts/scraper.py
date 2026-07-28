@@ -891,6 +891,56 @@ def simulate_prices(seed: int = None) -> list:
     return prices
 
 
+def derive_prices(real_prices: list) -> list:
+    """
+    从已有真实数据推导缺失品类价格
+    推导关系：
+    - 报纸 ≈ 书纸 × 0.88
+    - 黄板纸 ≈ 混合废纸 × 0.72
+    - 瓶玻璃 ≈ 平板玻璃 × 0.65
+    - 家电类保持模拟
+    """
+    # 建立已有数据的查找表
+    real_map = {p["category_id"]: p for p in real_prices}
+
+    derivations = {
+        "paper_baozhi": {
+            "from": "paper_shuzhi",
+            "factor": 0.88,
+            "desc": "由书纸价格推导",
+        },
+        "paper_huangban": {
+            "from": "paper_hunhe",
+            "factor": 0.72,
+            "desc": "由混合废纸价格推导",
+        },
+        "glass_bottle": {
+            "from": "glass_flat",
+            "factor": 0.65,
+            "desc": "由平板玻璃价格推导",
+        },
+    }
+
+    derived = []
+    for cat_id, rule in derivations.items():
+        source = real_map.get(rule["from"])
+        if source:
+            buy = max(1, round(source["buy_price"] * rule["factor"]))
+            sell = max(1, round(source["sell_price"] * rule["factor"]))
+            derived.append({
+                "category_id": cat_id,
+                "name": CATEGORY_NAMES.get(cat_id, cat_id),
+                "buy_price": buy,
+                "sell_price": sell,
+                "raw_avg_price": round((buy + sell) / 2),
+                "sample_count": source.get("sample_count", 1),
+                "sources": [f"{rule['desc']}（参考）"],
+                "scraped_at": datetime.now(timezone.utc).isoformat(),
+            })
+
+    return derived
+
+
 def main():
     # 解析命令行参数
     force_simulate = "--simulate" in sys.argv or "-s" in sys.argv
@@ -954,8 +1004,14 @@ def main():
 
     prices = merge_results(all_logs)
 
-    # 回退：真实爬取覆盖的品类用真实数据，缺失品类用模拟补齐
+    # 回退：真实爬取 → 推导缺失 → 模拟兜底
     real_categories = set(p["category_id"] for p in prices)
+    derived_prices = derive_prices(prices)
+    for dp in derived_prices:
+        if dp["category_id"] not in real_categories:
+            prices.append(dp)
+    
+    real_categories = set(p["category_id"] for p in prices)  # 更新
     all_categories = set(BASE_PRICES.keys())
     missing_categories = all_categories - real_categories
 
@@ -965,24 +1021,20 @@ def main():
             if sp["category_id"] in missing_categories:
                 prices.append(sp)
 
-    if real_categories and missing_categories:
-        data_source = "真实+模拟"
-    elif real_categories:
-        data_source = "真实爬取"
+    # 统计来源
+    n_real = len([p for p in prices if "推导" not in str(p.get("sources","")) and "模拟" not in str(p.get("sources",""))])
+    n_derived = len([p for p in prices if "推导" in str(p.get("sources",""))])
+    n_sim = len([p for p in prices if "模拟" in str(p.get("sources",""))])
+
+    if n_real + n_derived + n_sim > n_real:
+        data_source = f"真实{n_real}+推导{n_derived}+模拟{n_sim}"
     else:
-        data_source = "模拟行情"
+        data_source = "真实爬取"
 
     if force_simulate:
         data_source = "模拟行情"
 
-    if prices and not real_categories:
-        if force_simulate:
-            print("   🔧 模拟模式：生成参考行情数据")
-        else:
-            print("   ⚠️ 真实爬取无结果，回退到模拟行情数据")
-
-    if missing_categories and real_categories:
-        print(f"   📊 真实覆盖: {len(real_categories)} 品类, 模拟补齐: {len(missing_categories)} 品类")
+    print(f"   📊 真实:{n_real} 推导:{n_derived} 模拟:{n_sim}")
 
     print(f"   最终品类: {len(prices)} ({data_source})")
 
