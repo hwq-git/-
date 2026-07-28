@@ -1,188 +1,98 @@
 /**
  * 点对点分享 - 二维码生成/扫描
- * 纯本地：生成二维码让隔壁老王扫，或扫老王的二维码导入数据
- * 依赖：qrcode.js (CDN) + html5-qrcode (CDN)
+ * 极简版：超小数据 + 大QR + 手动翻页
  */
 const Share = (() => {
   let scanActive = false;
   let html5QrScanner = null;
+  let scanBuffer = '';
+  let scannedPageCount = 0;
 
   // ========== 二维码生成 ==========
   async function showShareQR() {
-    const modal = document.getElementById('modal-share-qr');
-    const container = document.getElementById('qr-container');
-    if (!modal || !container) return;
+    const container = document.getElementById('qr-page');
+    if (!container) return;
 
-    // 收集要分享的数据
-    const shareData = await collectShareData();
-    if (!shareData || shareData.prices.length === 0) {
-      showToast('⚠️ 暂无价格数据可分享');
-      return;
-    }
-
-    const jsonStr = JSON.stringify(shareData);
-    const compressed = compressData(jsonStr);
-
-    modal.classList.remove('hidden');
-
-    // 生成分页二维码（每页约400字符）
-    renderQRCodes(container, compressed);
-
-    // 显示数据摘要
-    document.getElementById('qr-summary').textContent =
-      `${shareData.prices.length} 条价格 · ${shareData.categories} 个品类 · ${new Date(shareData.shareTime).toLocaleString('zh-CN')}`;
-  }
-
-  async function collectShareData() {
-    const regionCode = await DB.getSetting('current_region', 'default');
+    // 收集数据 - 极简格式
     const allPrices = await DB.getAll('prices');
-
-    // 优先分享爬虫数据，其次用户录入数据
-    let prices = allPrices
-      .filter(p => p.source === 'crawler' || p.source === 'user')
-      .sort((a, b) => new Date(b.recorded_at) - new Date(a.recorded_at));
-
-    // 去重：每个品类只取最新一条
-    const seen = new Set();
-    const unique = [];
-    for (const p of prices) {
-      if (!seen.has(p.category_id)) {
-        seen.add(p.category_id);
-        unique.push({
-          category_id: p.category_id,
-          buy_price: p.buy_price,
-          sell_price: p.sell_price,
-          source: p.source,
-          recorded_at: p.recorded_at,
-        });
-      }
+    const seen = {};
+    const items = [];
+    for (const p of allPrices) {
+      if (seen[p.category_id]) continue;
+      seen[p.category_id] = 1;
+      items.push([p.category_id, p.buy_price, p.sell_price]);
     }
 
-    if (unique.length === 0) return null;
-
-    return {
-      v: 1,
-      shareTime: new Date().toISOString(),
-      categories: unique.length,
-      region: regionCode,
-      prices: unique,
-    };
-  }
-
-  function compressData(jsonStr) {
-    // 压缩JSON：移除空格和缩短key名
-    const data = JSON.parse(jsonStr);
-    const compressed = {
-      v: data.v,
-      t: data.shareTime,
-      n: data.categories,
-      r: data.region,
-      p: data.prices.map(p => [
-        p.category_id,
-        p.buy_price,
-        p.sell_price,
-        p.source === 'user' ? 1 : 0,
-        p.recorded_at ? new Date(p.recorded_at).getTime() : 0
-      ])
-    };
-    const result = JSON.stringify(compressed);
-    // 如果数据太大，只取前15条
-    if (result.length > 1200) {
-      compressed.p = compressed.p.slice(0, 15);
-      return JSON.stringify(compressed);
-    }
-    return result;
-  }
-
-  function decompressData(jsonStr) {
-    const data = JSON.parse(jsonStr);
-    // 兼容新旧格式
-    if (data.v && data.p && Array.isArray(data.p)) {
-      const prices = data.p.map(p => {
-        if (Array.isArray(p)) {
-          return {
-            category_id: p[0],
-            buy_price: p[1],
-            sell_price: p[2],
-            source: p[3] === 1 ? 'user' : 'crawler',
-            recorded_at: p[4] ? new Date(p[4]).toISOString() : new Date().toISOString(),
-          };
-        }
-        // 旧格式
-        return {
-          category_id: p.category_id,
-          buy_price: p.buy_price,
-          sell_price: p.sell_price,
-          source: p.source || 'crawler',
-          recorded_at: p.recorded_at || new Date().toISOString(),
-        };
-      });
-      return {
-        prices,
-        region: data.r || data.region || 'default',
-        shareTime: data.t || data.shareTime,
-      };
-    }
-    return null;
-  }
-
-  function renderQRCodes(container, compressedData) {
-    container.innerHTML = '';
-
-    const CHUNK_SIZE = 400;  // 每页最多400字符，保证扫码清晰
-
-    // 单页数据
-    if (compressedData.length <= CHUNK_SIZE) {
-      const div = document.createElement('div');
-      div.className = 'qr-code';
-      container.appendChild(div);
-      try {
-        new QRCode(div, {
-          text: compressedData,
-          width: 260,
-          height: 260,
-          colorDark: '#000000',
-          colorLight: '#ffffff',
-          correctLevel: QRCode.CorrectLevel.M,  // 中等纠错
-        });
-      } catch (e) {
-        div.innerHTML = '<div class="qr-error">QR生成失败</div>';
-      }
+    if (items.length === 0) {
+      showToast('⚠️ 暂无价格数据');
       return;
     }
 
-    // 分页显示
-    const totalPages = Math.ceil(compressedData.length / CHUNK_SIZE);
-    const pageInfo = document.createElement('div');
-    pageInfo.style.cssText = 'text-align:center;margin-bottom:12px;font-size:14px;color:#666;font-weight:bold;';
-    pageInfo.textContent = `数据共 ${totalPages} 页，请依次扫描`;
-    container.appendChild(pageInfo);
+    // 极简JSON：单字母key，无空格
+    const json = JSON.stringify({d:items});
+    document.getElementById('qr-data-size').textContent = `${items.length}品类 · ${json.length}字符`;
 
-    for (let i = 0; i < totalPages; i++) {
-      const chunk = `P${i+1}/${totalPages}|` + compressedData.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-      const div = document.createElement('div');
-      div.className = 'qr-code';
-      div.style.marginBottom = '16px';
-      container.appendChild(div);
+    // 分页：每页300字符
+    const PAGE = 300;
+    const totalPages = Math.ceil(json.length / PAGE);
+    document.getElementById('qr-page-info').textContent = `第 1/${totalPages} 页`;
 
-      const label = document.createElement('div');
-      label.style.cssText = 'text-align:center;font-size:13px;color:#1a73e8;margin-bottom:6px;font-weight:bold;';
-      label.textContent = `📄 第 ${i+1}/${totalPages} 页`;
-      container.appendChild(label);
+    // 存储数据
+    container.dataset.json = json;
+    container.dataset.page = '1';
+    container.dataset.total = totalPages;
+    container.dataset.pages = JSON.stringify(
+      Array.from({length: totalPages}, (_,i) => json.substring(i*PAGE, (i+1)*PAGE))
+    );
 
-      try {
-        new QRCode(div, {
-          text: chunk,
-          width: 260,
-          height: 260,
-          colorDark: '#000000',
-          colorLight: '#ffffff',
-          correctLevel: QRCode.CorrectLevel.M,
-        });
-      } catch (e) {
-        div.innerHTML = '<div class="qr-error">生成失败</div>';
-      }
+    document.getElementById('modal-share-qr').classList.remove('hidden');
+    renderCurrentPage();
+  }
+
+  function renderCurrentPage() {
+    const container = document.getElementById('qr-page');
+    const json = container.dataset.json;
+    const page = parseInt(container.dataset.page);
+    const total = parseInt(container.dataset.total);
+    const pages = JSON.parse(container.dataset.pages);
+
+    // 清空
+    const qrDiv = document.getElementById('qr-code-display');
+    qrDiv.innerHTML = '';
+
+    document.getElementById('qr-page-info').textContent = `第 ${page}/${total} 页`;
+
+    // 上一页/下一页按钮
+    document.getElementById('qr-prev').style.display = page > 1 ? 'inline-block' : 'none';
+    document.getElementById('qr-next').style.display = page < total ? 'inline-block' : 'none';
+
+    // 生成QR
+    const text = pages[page - 1];
+    try {
+      new QRCode(qrDiv, {
+        text: text,
+        width: 280,
+        height: 280,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.L,
+      });
+    } catch(e) {
+      qrDiv.innerHTML = '<div style="color:red;padding:20px;">QR生成失败</div>';
     }
+  }
+
+  function prevPage() {
+    const c = document.getElementById('qr-page');
+    let p = parseInt(c.dataset.page);
+    if (p > 1) { c.dataset.page = p - 1; renderCurrentPage(); }
+  }
+
+  function nextPage() {
+    const c = document.getElementById('qr-page');
+    let p = parseInt(c.dataset.page);
+    let t = parseInt(c.dataset.total);
+    if (p < t) { c.dataset.page = p + 1; renderCurrentPage(); }
   }
 
   // ========== 二维码扫描 ==========
@@ -191,116 +101,96 @@ const Share = (() => {
     const reader = document.getElementById('qr-reader');
     if (!modal || !reader) return;
 
+    scanBuffer = '';
+    scannedPageCount = 0;
     modal.classList.remove('hidden');
-
     reader.innerHTML = '<div id="qr-reader-inner" style="width:100%;max-width:300px;margin:0 auto;"></div>';
+    document.getElementById('scan-status').textContent = '请对准二维码';
 
     try {
       html5QrScanner = new Html5Qrcode('qr-reader-inner');
       scanActive = true;
-
       await html5QrScanner.start(
         { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 220, height: 220 } },
-        (decodedText) => onScanSuccess(decodedText),
-        (errorMessage) => { /* 忽略扫描中错误 */ }
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        onScan,
+        () => {}
       );
-    } catch (e) {
-      reader.innerHTML = `<div class="scan-error">⚠️ 无法启动摄像头<br><small>${e.message || '请授予摄像头权限'}</small></div>`;
-      scanActive = false;
+    } catch(e) {
+      reader.innerHTML = `<div style="color:#e53935;padding:20px;text-align:center;">⚠️ 无法启动摄像头<br><small>${e.message||'请授予权限'}</small></div>`;
     }
   }
 
-  // 缓存多页扫描数据
-  let scannedPages = {};
+  function onScan(text) {
+    if (!scanActive || !text) return;
 
-  async function onScanSuccess(decodedText) {
-    if (!scanActive) return;
-
-    // 检测分页格式
-    const pageMatch = decodedText.match(/^P(\d+)\/(\d+)\|(.+)/);
-    if (pageMatch) {
-      const page = parseInt(pageMatch[1]);
-      const total = parseInt(pageMatch[2]);
-      const chunk = pageMatch[3];
-      scannedPages[page] = chunk;
-
-      // 检查是否收集完毕
-      if (Object.keys(scannedPages).length >= total) {
-        const full = Array.from({ length: total }, (_, i) => scannedPages[i + 1] || '').join('');
-        scannedPages = {};
-        await stopScan();
-        processImportedData(full);
-      } else {
-        showToast(`📸 第${page}/${total}页已扫，继续扫下一页...`);
-      }
-      return;
+    // 检测是否是完整数据: {"d":[[...]]}
+    if (text.startsWith('{"d":')) {
+      scanBuffer = text;
+      scannedPageCount = 1;
+    } else {
+      scanBuffer += text;
+      scannedPageCount++;
     }
 
-    // 单页数据直接处理
+    document.getElementById('scan-status').textContent = `已扫描 ${scannedPageCount} 段`;
+
+    // 试试解析
+    try {
+      const data = JSON.parse(scanBuffer);
+      if (data.d && Array.isArray(data.d)) {
+        stopAndImport(scanBuffer);
+        return;
+      }
+    } catch(e) {}
+
+    // 等待更多扫描
+    if (scannedPageCount >= 5) {
+      stopAndImport(scanBuffer);
+    }
+  }
+
+  async function stopAndImport(jsonStr) {
     await stopScan();
-    processImportedData(decodedText);
+    try {
+      const data = JSON.parse(jsonStr);
+      if (!data.d) { showToast('❌ 无效数据'); return; }
+
+      const records = data.d.map(p => ({
+        id: `share_${p[0]}_${Date.now()}_${Math.random().toString(36).substr(2,4)}`,
+        category_id: p[0],
+        buy_price: p[1],
+        sell_price: p[2],
+        region_code: 'default',
+        source: 'share',
+        source_detail: '👥 好友分享',
+        recorded_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+      }));
+
+      await DB.bulkPut('prices', records);
+      showToast(`✅ 已导入 ${records.length} 条价格`);
+      if (typeof App !== 'undefined' && App.renderMarket) App.renderMarket();
+    } catch(e) {
+      showToast('❌ 数据解析失败');
+    }
   }
 
   async function stopScan() {
     scanActive = false;
-    scannedPages = {};
     if (html5QrScanner) {
-      try {
-        await html5QrScanner.stop();
-      } catch (e) { /* ignore */ }
+      try { await html5QrScanner.stop(); } catch(e) {}
       html5QrScanner = null;
     }
     document.getElementById('modal-scan-qr').classList.add('hidden');
   }
 
-  async function processImportedData(jsonStr) {
-    const shareData = decompressData(jsonStr);
-    if (!shareData || !shareData.prices || shareData.prices.length === 0) {
-      showToast('❌ 无效的分享数据');
-      return;
-    }
-
-    const regionCode = shareData.region || await DB.getSetting('current_region', 'default');
-    const now = new Date().toISOString();
-    const records = shareData.prices.map(p => ({
-      id: `share_${p.category_id}_${now}_${Math.random().toString(36).substr(2, 6)}`,
-      category_id: p.category_id,
-      buy_price: p.buy_price,
-      sell_price: p.sell_price,
-      region_code: regionCode,
-      source: 'share',
-      source_detail: '👥 老王分享 · ' + new Date(shareData.shareTime || now).toLocaleDateString('zh-CN'),
-      recorded_at: p.recorded_at || now,
-      created_at: now,
-    }));
-
-    await DB.bulkPut('prices', records);
-    showToast(`✅ 已导入 ${records.length} 条价格`);
-
-    // 刷新行情页
-    if (typeof App !== 'undefined' && App.renderMarket) {
-      App.renderMarket();
-    }
-  }
-
-  function loadScript(src) {
-    return new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = src;
-      script.onload = resolve;
-      script.onerror = reject;
-      document.head.appendChild(script);
-    });
-  }
-
   function showToast(msg) {
-    const toast = document.getElementById('toast');
-    toast.textContent = msg;
-    toast.style.display = 'block';
-    clearTimeout(toast._timer);
-    toast._timer = setTimeout(() => { toast.style.display = 'none'; }, 3000);
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.style.display = 'block';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.style.display = 'none'; }, 3000);
   }
 
-  return { showShareQR, startScan, stopScan };
+  return { showShareQR, startScan, stopScan, prevPage, nextPage };
 })();

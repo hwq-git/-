@@ -294,29 +294,35 @@
 
   <!-- ===== 弹窗：二维码分享 ===== -->
   <div id="modal-share-qr" class="modal-overlay hidden">
-    <div class="modal" style="max-width:360px;">
+    <div class="modal" style="max-width:380px;">
       <div class="modal-header">
         <h3>📱 二维码分享</h3>
         <button class="close-btn" onclick="document.getElementById('modal-share-qr').classList.add('hidden')">×</button>
       </div>
       <div class="modal-body" style="text-align:center;">
-        <div id="qr-container"></div>
-        <div id="qr-summary" style="margin-top:12px;font-size:13px;color:#666;"></div>
-        <div style="margin-top:8px;font-size:12px;color:#999;">让隔壁老王用「扫码导入」扫描此二维码</div>
+        <div id="qr-data-size" style="font-size:13px;color:#666;margin-bottom:8px;"></div>
+        <div id="qr-code-display" style="display:inline-block;"></div>
+        <div style="margin:10px 0;display:flex;align-items:center;justify-content:center;gap:16px;">
+          <button id="qr-prev" onclick="Share.prevPage()" style="display:none;padding:8px 16px;border:1px solid #1a73e8;border-radius:8px;color:#1a73e8;background:#fff;font-size:15px;">◀ 上一页</button>
+          <span id="qr-page-info" style="font-weight:bold;font-size:14px;"></span>
+          <button id="qr-next" onclick="Share.nextPage()" style="display:none;padding:8px 16px;border:1px solid #1a73e8;border-radius:8px;color:#1a73e8;background:#fff;font-size:15px;">下一页 ▶</button>
+        </div>
+        <div id="qr-summary" style="margin-top:8px;font-size:12px;color:#999;">好友用「扫码导入」依次扫描即可</div>
       </div>
     </div>
   </div>
 
   <!-- ===== 弹窗：扫码导入 ===== -->
   <div id="modal-scan-qr" class="modal-overlay hidden">
-    <div class="modal" style="max-width:360px;">
+    <div class="modal" style="max-width:380px;">
       <div class="modal-header">
         <h3>📷 扫码导入</h3>
         <button class="close-btn" onclick="Share.stopScan()">×</button>
       </div>
       <div class="modal-body" style="text-align:center;">
-        <div id="qr-reader"></div>
-        <div style="margin-top:10px;font-size:12px;color:#999;">对准二维码自动识别</div>
+        <div id="qr-reader" style="min-height:220px;"></div>
+        <div id="scan-status" style="margin-top:10px;font-size:14px;color:#1a73e8;font-weight:bold;">请对准二维码</div>
+        <div style="font-size:12px;color:#999;margin-top:4px;">多页请依次扫描，数据自动合并</div>
       </div>
     </div>
   </div>
