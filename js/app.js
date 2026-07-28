@@ -27,6 +27,14 @@ const App = (() => {
       progress('加载种子数据...');
       await initSeedData();
 
+      // 立即从远程JSON加载最新行情（非阻塞，静默更新）
+      Crawler.fetchRemotePrices().then(result => {
+        if (result.success) {
+          console.log('[App] 远程数据已加载:', result.count, '条');
+          renderMarket();
+        }
+      }).catch(e => console.warn('[App] 远程数据加载失败:', e));
+
       progress('加载收藏...');
       await loadFavorites();
 
