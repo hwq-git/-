@@ -1,0 +1,13 @@
+index.html
+manifest.json
+sw.js
+css/style.css
+js/db.js
+js/seed-data.js
+js/crawler.js
+js/charts.js
+js/export.js
+js/share.js
+js/app.js
+data/crawler-rules.json
+data/scraped-prices.json
