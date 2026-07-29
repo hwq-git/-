@@ -29,7 +29,7 @@ jobs:
 
       - name: 运行爬虫
         run: |
-          python scripts/scraper.py
+          python scripts/scraper.py --mianyang
 
       - name: 检查输出
         id: check_output

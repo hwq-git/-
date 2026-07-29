@@ -2,15 +2,30 @@
 
 ## 项目信息
 - **类型**: 废品回收价格查询 PWA 应用
-- **路径**: C:\Users\20331\WorkBuddy\废品每日价格
+- **路径**: /home/hwq/pi/废品每日价格
 - **技术栈**: PWA + IndexedDB + Service Worker + Chart.js + 原生JS
 - **用户**: 回收站老板（50多岁，非技术背景），需要大字体、极简操作
+
+## 数据来源
+| 来源 | 状态 | 说明 |
+|------|------|------|
+| 🥇 金投网 API | ✅ 运行中 | 双通道(js_废金属 + other_废纸塑料橡胶玻璃)，约2059条/次 |
+| 🥈 生意社 100ppi | ⚠️ 部分可用 | HTML渲染不全，仅部分品类有数据，已禁用主要站点 |
+| 🥈 ZZ91再生网 | ⚠️ JS渲染 | 需Puppeteer，当前未对接，已启用但结果显示JS渲染 |
+| 🥉 地区价格修正 | ✅ 已应用 | 四川绵阳/成都地区修正系数，命令行 --mianyang 启用 |
+| 🥉 推导+模拟 | ✅ 兜底 | 真实数据缺失时自动推导+模拟补齐 |
+
+## 地区支持
+- **四川绵阳** (sc_my): 默认地区，废纸折2-5%，废金属折5-7%
+- **四川成都** (sc_cd): 废纸折1-3%，废金属折3-5%
+- 命令行参数: `--mianyang`, `--chengdu`, `--national`（全国均价）
 
 ## 关键决策
 - 需求文档指定 Flutter，但环境无 SDK，改用 PWA 方案（立即可用、可安装、离线支持）
 - 爬虫通过 CORS 代理适配浏览器（allorigins/corsproxy/codetabs 三代理轮换）
 - 真实爬取失败时自动切换模拟数据更新，确保用户体验不受影响
 - 数据来源优先级：爬虫行情价 > 用户录入 > 系统种子数据
+- 生意社、ZZ91等现代网站大量使用JS渲染，HTTP直接抓取效果有限
 
 ## 数据库结构
 IndexedDB 8个表：categories, prices, crawler_configs, crawl_logs, ledger, alerts, regions, favorites, settings
@@ -25,10 +40,12 @@ IndexedDB 8个表：categories, prices, crawler_configs, crawl_logs, ledger, ale
 - [x] 数据导出JSON/Excel
 - [x] PWA离线可用
 - [x] 记账功能（收/卖记录+盈亏统计）
+- [x] 四川绵阳地区价格修正
 
 ## 待实现（第二阶段）
 - [ ] 价格预警（本地通知）
 - [ ] 二维码点对点分享
 - [ ] 语音输入
 - [ ] 爬虫规则在线热更新
+- [ ] Puppeteer方案对接ZZ91/生意社JS渲染站点
 - [ ] 转Flutter原生App

@@ -110,6 +110,14 @@ const REGIONS = [
   { id: 'region_huabei', name: '华北地区', parent_id: null, level: 1 },
   { id: 'region_beijing', name: '北京市', parent_id: 'region_huabei', level: 2 },
   { id: 'region_tianjin', name: '天津市', parent_id: 'region_huabei', level: 2 },
+  // === 四川地区 ===
+  { id: 'region_xinan', name: '西南地区', parent_id: null, level: 1 },
+  { id: 'region_sichuan', name: '四川省', parent_id: 'region_xinan', level: 2 },
+  { id: 'region_chengdu', name: '成都市', parent_id: 'region_sichuan', level: 3 },
+  { id: 'region_mianyang', name: '绵阳市', parent_id: 'region_sichuan', level: 3 },
+  { id: 'region_deyang', name: '德阳市', parent_id: 'region_sichuan', level: 3 },
+  { id: 'region_yibin', name: '宜宾市', parent_id: 'region_sichuan', level: 3 },
+  { id: 'region_nanchong', name: '南充市', parent_id: 'region_sichuan', level: 3 },
 ];
 
 // ==================== 生成3个月历史价格 ====================
@@ -157,16 +165,44 @@ function generateSeedPrices() {
 
 // ==================== 内置爬虫规则（后备方案） ====================
 const CRAWLER_RULES = {
-  version: '1.0.2',
+  version: '3.0.0',
   updated_at: new Date().toISOString(),
   sites: [
+    {
+      name: '金投网-废品行情',
+      baseUrl: 'https://www.quheqihuo.com/api/dz/ajax/data_by_ids.html',
+      type: 'jintou_api',
+      intervalMinutes: 120,
+      enabled: true
+    },
+    {
+      name: '生意社-废纸行情',
+      baseUrl: 'https://www.100ppi.com/price/plist-7-0-1.html',
+      type: '100ppi_html',
+      intervalMinutes: 180,
+      enabled: true
+    },
+    {
+      name: '生意社-废金属行情',
+      baseUrl: 'https://www.100ppi.com/price/plist-8-0-1.html',
+      type: '100ppi_html',
+      intervalMinutes: 180,
+      enabled: true
+    },
+    {
+      name: '生意社-废塑料行情',
+      baseUrl: 'https://www.100ppi.com/price/plist-9-0-1.html',
+      type: '100ppi_html',
+      intervalMinutes: 180,
+      enabled: true
+    },
     {
       name: '废品之家',
       baseUrl: 'https://www.feipinzhijia.com/hangqing/',
       listSelector: '.price-list li',
       fields: { category: '.name', price: '.price-value', change: '.change', date: '.date' },
       intervalMinutes: 120,
-      enabled: true
+      enabled: false
     },
     {
       name: 'Feijiu网',
@@ -174,7 +210,7 @@ const CRAWLER_RULES = {
       listSelector: '.hq-list .hq-item',
       fields: { category: '.hq-name', price: '.hq-price', change: '.hq-change', date: '.hq-date' },
       intervalMinutes: 180,
-      enabled: true
+      enabled: false
     },
     {
       name: '91再生',
@@ -182,7 +218,7 @@ const CRAWLER_RULES = {
       listSelector: '.market-list .item',
       fields: { category: '.title', price: '.price', change: '.trend', date: '.time' },
       intervalMinutes: 240,
-      enabled: true
+      enabled: false
     },
   ]
 };

@@ -1,6 +1,6 @@
 {
-  "version": "2.1.0",
-  "updated_at": "2026-07-28T12:30:00+08:00",
+  "version": "3.0.0",
+  "updated_at": "2026-07-28T22:30:00+08:00",
   "sites": [
     {
       "name": "金投网-废品行情",
@@ -16,6 +16,203 @@
           {"prefix": "other_", "range": [0, 10000], "desc": "废纸/塑料/橡胶/玻璃"}
         ]
       }
+    },
+    {
+      "name": "生意社-废纸行情",
+      "type": "100ppi_html",
+      "baseUrl": "https://www.100ppi.com/price/plist-49-0-1.html",
+      "description": "生意社废纸价格（需JS渲染，暂不可用）",
+      "intervalMinutes": 180,
+      "enabled": false,
+      "api_config": {
+        "category": "废纸",
+        "pages": [1, 2],
+        "price_selector": "table tbody tr"
+      }
+    },
+    {
+      "name": "生意社-废金属行情",
+      "type": "100ppi_html",
+      "baseUrl": "https://www.100ppi.com/price/plist-83-0-1.html",
+      "description": "生意社废金属价格（需JS渲染，暂不可用）",
+      "intervalMinutes": 180,
+      "enabled": false,
+      "api_config": {
+        "category": "废金属",
+        "pages": [1, 2, 3],
+        "price_selector": "table tbody tr"
+      }
+    },
+    {
+      "name": "生意社-废塑料行情",
+      "type": "100ppi_html",
+      "baseUrl": "https://www.100ppi.com/price/plist-13-0-1.html",
+      "description": "生意社废塑料价格（需JS渲染，暂不可用）",
+      "intervalMinutes": 180,
+      "enabled": false,
+      "api_config": {
+        "category": "废塑料",
+        "pages": [1, 2],
+        "price_selector": "table tbody tr"
+      }
+    },
+    {
+      "name": "生意社-橡胶行情",
+      "type": "100ppi_html",
+      "baseUrl": "https://www.100ppi.com/price/plist-10-0-1.html",
+      "description": "生意社橡胶价格（天然橡胶、丁苯橡胶、顺丁橡胶等）",
+      "intervalMinutes": 240,
+      "enabled": true,
+      "api_config": {
+        "category": "废橡胶",
+        "pages": [1],
+        "price_selector": "table tbody tr"
+      }
+    },
+    {
+      "name": "生意社-玻璃行情",
+      "type": "100ppi_html",
+      "baseUrl": "https://www.100ppi.com/price/plist-11-0-1.html",
+      "description": "生意社玻璃价格（平板玻璃、浮法玻璃等）",
+      "intervalMinutes": 240,
+      "enabled": true,
+      "api_config": {
+        "category": "废玻璃",
+        "pages": [1],
+        "price_selector": "table tbody tr"
+      }
+    },
+    {
+      "name": "ZZ91再生网-废纸行情",
+      "type": "zz91_api",
+      "baseUrl": "https://jiage.zz91.com/feizhi/",
+      "description": "ZZ91再生网废纸价格（JS渲染+API可用，接口待对接）",
+      "intervalMinutes": 240,
+      "enabled": true,
+      "api_config": {
+        "category": "废纸"
+      }
+    },
+    {
+      "name": "ZZ91再生网-废塑料行情",
+      "type": "zz91_api",
+      "baseUrl": "https://jiage.zz91.com/feisuliao/",
+      "description": "ZZ91再生网废塑料价格（JS渲染+API可用，接口待对接）",
+      "intervalMinutes": 240,
+      "enabled": true,
+      "api_config": {
+        "category": "废塑料"
+      }
+    },
+    {
+      "name": "ZZ91再生网-废金属行情",
+      "type": "zz91_api",
+      "baseUrl": "https://jiage.zz91.com/feijinshu/",
+      "description": "ZZ91再生网废金属价格（JS渲染+API可用，接口待对接）",
+      "intervalMinutes": 240,
+      "enabled": true,
+      "api_config": {
+        "category": "废金属"
+      }
+    },
+    {
+      "name": "废品之家-废纸价格",
+      "type": "html",
+      "baseUrl": "https://www.feipinzhijia.com/hangqing/",
+      "description": "废品之家废纸回收价格（需Cookie认证，浏览器端可尝试）",
+      "intervalMinutes": 360,
+      "enabled": false,
+      "css_selector": ".price-list li, .hangqing-item",
+      "fields": {
+        "category": ".name, .title, h3",
+        "price": ".price-value, .price, .val",
+        "change": ".change, .trend, .diff",
+        "date": ".date, .time, .update"
+      },
+      "auth": {
+        "required": false,
+        "description": "可选Cookie提升反爬通过率"
+      }
     }
-  ]
+  ],
+  "regions": {
+    "sc_my": {
+      "name": "四川绵阳",
+      "code": "sc_my",
+      "parent": "sichuan",
+      "description": "四川绵阳地区废品回收价格",
+      "adjustment_factors": {
+        "paper_huangban": 0.97,
+        "paper_shuzhi": 0.96,
+        "paper_baozhi": 0.96,
+        "paper_zhixiang": 0.98,
+        "paper_waiboxhi": 0.97,
+        "paper_baizhibian": 0.95,
+        "paper_hunhe": 0.98,
+        "plastic_pet": 0.96,
+        "plastic_pe": 0.96,
+        "plastic_pp": 0.97,
+        "plastic_pvc": 0.97,
+        "plastic_abs": 0.95,
+        "plastic_pc": 0.95,
+        "plastic_ps": 0.96,
+        "metal_iron": 0.94,
+        "metal_copper": 0.93,
+        "metal_aluminum": 0.94,
+        "metal_steel": 0.94,
+        "metal_zinc": 0.94,
+        "metal_lead": 0.94,
+        "metal_tin": 0.93,
+        "glass_flat": 0.98,
+        "glass_bottle": 0.99,
+        "appliance_fridge": 0.95,
+        "appliance_washer": 0.95,
+        "appliance_ac": 0.94,
+        "appliance_tv": 0.96,
+        "appliance_phone": 0.97,
+        "rubber_tire": 0.97,
+        "rubber_hose": 0.97
+      },
+      "note": "绵阳地区价格相对全国均价略低，废纸类低2-5%，废金属低5-7%，家电类低3-6%"
+    },
+    "sc_cd": {
+      "name": "四川成都",
+      "code": "sc_cd",
+      "parent": "sichuan",
+      "description": "四川成都地区废品回收价格",
+      "adjustment_factors": {
+        "paper_huangban": 0.99,
+        "paper_shuzhi": 0.98,
+        "paper_baozhi": 0.98,
+        "paper_zhixiang": 0.99,
+        "paper_waiboxhi": 0.99,
+        "paper_baizhibian": 0.97,
+        "paper_hunhe": 0.99,
+        "plastic_pet": 0.98,
+        "plastic_pe": 0.98,
+        "plastic_pp": 0.98,
+        "plastic_pvc": 0.98,
+        "plastic_abs": 0.97,
+        "plastic_pc": 0.97,
+        "plastic_ps": 0.98,
+        "metal_iron": 0.96,
+        "metal_copper": 0.95,
+        "metal_aluminum": 0.96,
+        "metal_steel": 0.96,
+        "metal_zinc": 0.95,
+        "metal_lead": 0.96,
+        "metal_tin": 0.95,
+        "glass_flat": 0.99,
+        "glass_bottle": 0.99,
+        "appliance_fridge": 0.97,
+        "appliance_washer": 0.97,
+        "appliance_ac": 0.96,
+        "appliance_tv": 0.97,
+        "appliance_phone": 0.98,
+        "rubber_tire": 0.98,
+        "rubber_hose": 0.98
+      },
+      "note": "成都地区价格接近全国均价，废金属低2-5%"
+    }
+  }
 }

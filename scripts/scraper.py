@@ -41,6 +41,43 @@ USER_AGENTS = [
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15",
 ]
 
+# ==================== 地区价格系数（四川/绵阳） ====================
+def load_region_factors() -> dict:
+    """从 crawler-rules.json 加载地区价格调整系数"""
+    try:
+        with open(RULES_FILE, "r", encoding="utf-8") as f:
+            rules = json.load(f)
+        return rules.get("regions", {})
+    except Exception:
+        return {}
+
+
+def apply_region_factors(prices: list, region_code: str = "sc_my") -> list:
+    """对价格应用地区调整系数（绵阳默认）"""
+    regions = load_region_factors()
+    if not regions or region_code not in regions:
+        return prices
+    
+    factors = regions[region_code].get("adjustment_factors", {})
+    if not factors:
+        return prices
+    
+    region_name = regions[region_code].get("name", region_code)
+    for p in prices:
+        cat_id = p.get("category_id", "")
+        if cat_id in factors:
+            factor = factors[cat_id]
+            p["buy_price"] = round(p["buy_price"] * factor)
+            p["sell_price"] = round(p["sell_price"] * factor)
+            p["raw_avg_price"] = round(p.get("raw_avg_price", 0) * factor)
+            # 标记地区来源
+            if "sources" in p:
+                p["region"] = region_name
+                if not any("绵阳" in s or "成都" in s or "四川" in s for s in p["sources"]):
+                    p["sources"].append(f"{region_name}地区修正")
+    return prices
+
+
 # ==================== 品类匹配表（同 JS 版） ====================
 CATEGORY_KEYWORDS = {
     "paper_huangban":    ["黄板纸", "黄板", "黄纸板"],
@@ -667,6 +704,296 @@ def crawl_jintou_api(config: dict) -> dict:
     return log
 
 
+# ==================== 生意社 (100ppi.com) 爬虫 ====================
+
+# 100ppi品名 → 我们的品类ID 映射表
+PPI_CATEGORY_MAP = {
+    # === 废纸类 ===
+    "瓦楞原纸": "paper_waiboxhi", "瓦楞纸": "paper_waiboxhi",
+    "箱板纸": "paper_zhixiang", "再生箱板纸": "paper_zhixiang",
+    "白卡纸": "paper_baizhibian", "白板纸": "paper_baizhibian",
+    "白纸边": "paper_baizhibian",
+    "双胶纸": "paper_shuzhi", "铜版纸": "paper_shuzhi",
+    "书纸": "paper_shuzhi", "书本纸": "paper_shuzhi",
+    "新闻纸": "paper_baozhi", "废报纸": "paper_baozhi",
+    "废纸": "paper_hunhe", "统废纸": "paper_hunhe",
+    "黄板纸": "paper_huangban", "废黄板纸": "paper_huangban",
+    "混合废纸": "paper_hunhe",
+
+    # === 废金属类 ===
+    "废铜": "metal_copper", "1#废铜": "metal_copper", "二号铜": "metal_copper",
+    "光亮铜": "metal_copper", "马达铜": "metal_copper",
+    "紫铜": "metal_copper", "黄铜": "metal_copper",
+    "废铝": "metal_aluminum", "生铝": "metal_aluminum",
+    "废铝线": "metal_aluminum", "铝合金": "metal_aluminum",
+    "破碎铝": "metal_aluminum",
+    "废铁": "metal_iron", "废钢": "metal_iron",
+    "重废": "metal_iron", "中废": "metal_iron", "统废": "metal_iron",
+    "生铁": "metal_iron", "废钢筋": "metal_iron",
+    "边角料": "metal_iron",
+    "不锈钢": "metal_steel", "废不锈钢": "metal_steel",
+    "304不锈钢": "metal_steel", "316不锈钢": "metal_steel",
+    "废锌": "metal_zinc", "锌锭": "metal_zinc",
+    "破碎锌": "metal_zinc",
+    "废铅": "metal_lead", "铅锭": "metal_lead",
+    "废电瓶": "metal_lead", "还原铅": "metal_lead",
+    "废锡": "metal_tin", "锡锭": "metal_tin",
+    "锡渣": "metal_tin",
+
+    # === 废塑料类 ===
+    "PET": "plastic_pet", "PET瓶片": "plastic_pet",
+    "PE": "plastic_pe", "聚乙烯": "plastic_pe",
+    "HDPE": "plastic_pe", "LDPE": "plastic_pe", "LLDPE": "plastic_pe",
+    "PP": "plastic_pp", "聚丙烯": "plastic_pp",
+    "PVC": "plastic_pvc", "聚氯乙烯": "plastic_pvc",
+    "ABS": "plastic_abs", "PC": "plastic_pc",
+    "聚碳酸酯": "plastic_pc",
+    "PS": "plastic_ps", "聚苯乙烯": "plastic_ps",
+    "GPPS": "plastic_ps", "HIPS": "plastic_ps",
+    "PA6": "plastic_abs", "PA66": "plastic_abs",
+    "POM": "plastic_abs", "EVA": "plastic_pe",
+
+    # === 废橡胶类 ===
+    "天然橡胶": "rubber_tire", "丁苯橡胶": "rubber_tire",
+    "顺丁橡胶": "rubber_tire", "丁腈橡胶": "rubber_hose",
+    "废轮胎": "rubber_tire", "再生橡胶": "rubber_tire",
+    "硅橡胶": "rubber_hose",
+
+    # === 废玻璃类 ===
+    "平板玻璃": "glass_flat", "浮法玻璃": "glass_flat",
+    "玻璃": "glass_flat",
+    "废玻璃": "glass_bottle", "碎玻璃": "glass_bottle",
+    "玻璃瓶": "glass_bottle",
+}
+
+
+def match_ppi_name(name: str) -> Optional[str]:
+    """匹配生意社品名到我们的品类ID"""
+    if name in PPI_CATEGORY_MAP:
+        return PPI_CATEGORY_MAP[name]
+    for ppi_name, cat_id in PPI_CATEGORY_MAP.items():
+        if ppi_name in name or name in ppi_name:
+            return cat_id
+    return match_category(name)
+
+
+def crawl_100ppi(config: dict) -> dict:
+    """爬取生意社(100ppi.com)价格数据"""
+    api_config = config.get("api_config", {})
+    base_url = config.get("baseUrl", config.get("base_url", ""))
+    category_desc = api_config.get("category", "未知")
+    pages = api_config.get("pages", [1])
+    
+    all_results = []
+    session = build_session()
+    total_parsed = 0
+    total_errors = 0
+    
+    site_name = config.get("name", config.get("website_name", "生意社"))
+    print(f"  📡 [100ppi] {site_name} ({category_desc})")
+    
+    for page in pages:
+        url = base_url
+        if page > 1:
+            url = base_url.replace("-1.html", f"-{page}.html")
+        
+        try:
+            resp = session.get(url, timeout=20)
+            if resp.status_code != 200:
+                print(f"     ⚠️  第{page}页 HTTP {resp.status_code}")
+                continue
+            
+            soup = BeautifulSoup(resp.text, "lxml")
+            
+            # 找价格表格
+            price_rows = []
+            selectors = ["table tbody tr", "table.table tbody tr", "table tr"]
+            for sel in selectors:
+                rows = soup.select(sel)
+                if rows and len(rows) > 3:
+                    price_rows = rows
+                    break
+            
+            if not price_rows:
+                print(f"     ⚠️  第{page}页: 未找到价格表格")
+                continue
+            
+            page_results = 0
+            for row in price_rows:
+                try:
+                    cells = row.find_all("td")
+                    if not cells or len(cells) < 3:
+                        continue
+                    
+                    name_cell = cells[0]
+                    price_cell = cells[1] if len(cells) > 1 else None
+                    
+                    name = name_cell.get_text(strip=True)
+                    name = re.sub(r"\s+", "", name)
+                    
+                    # 跳过表头和导航
+                    if not name or name in ["产品名称", "商品名称", "品名", "产品", "品种"]:
+                        continue
+                    if any(kw in name for kw in ["更多", "下一页", "上一页", "首页"]):
+                        continue
+                    
+                    cat_id = match_ppi_name(name)
+                    if not cat_id:
+                        continue
+                    
+                    price = None
+                    if price_cell:
+                        price_text = price_cell.get_text(strip=True)
+                        price = parse_price(price_text)
+                    
+                    if price is None or price <= 0:
+                        continue
+                    
+                    all_results.append({
+                        "category_id": cat_id,
+                        "category_name": CATEGORY_NAMES.get(cat_id, name),
+                        "name": name,
+                        "buy_price": round(price * 0.97),
+                        "sell_price": round(price * 1.01),
+                        "raw_price": price,
+                        "change": 0.0,
+                        "source_detail": "生意社",
+                        "date_text": "",
+                    })
+                    page_results += 1
+                except Exception:
+                    total_errors += 1
+                    continue
+            
+            total_parsed += page_results
+            if page_results > 0:
+                print(f"     ✅ 第{page}页: {page_results} 条")
+            else:
+                print(f"     ⚠️  第{page}页: {len(price_rows)}行无匹配")
+            
+            if page < max(pages):
+                time.sleep(1 + random.random() * 2)
+                
+        except Exception as e:
+            print(f"     ❌ 第{page}页: {e}")
+    
+    log = {
+        "website_name": site_name,
+        "status": "success" if all_results else "failed",
+        "items_scraped": len(all_results),
+        "error_msg": "" if all_results else f"生意社{category_desc}: 无匹配数据",
+        "http_status": 200,
+        "matched_elements": total_parsed,
+        "parse_errors": total_errors,
+        "crawled_at": datetime.now(timezone.utc).isoformat(),
+    }
+    
+    if all_results:
+        log["results"] = all_results
+        from collections import Counter
+        cat_counts = Counter(r["category_id"] for r in all_results)
+        cat_summary = ", ".join(f"{CATEGORY_NAMES.get(k, k)}:{v}" for k, v in cat_counts.most_common())
+        print(f"     ✅ 总计 {len(all_results)} 条 ({cat_summary})")
+    else:
+        print(f"     ❌ 无匹配数据")
+    
+    return log
+
+
+# ==================== ZZ91再生网 爬虫 ====================
+
+def crawl_zz91(config: dict) -> dict:
+    """爬取ZZ91再生网 (jiage.zz91.com) 价格数据"""
+    api_config = config.get("api_config", {})
+    category_desc = api_config.get("category", "未知")
+    site_name = config.get("name", config.get("website_name", "ZZ91再生网"))
+    
+    print(f"  📡 [ZZ91] {site_name} ({category_desc})")
+    
+    category_urls = {
+        "废纸": "https://jiage.zz91.com/feizhi/",
+        "废塑料": "https://jiage.zz91.com/feisuliao/",
+        "废金属": "https://jiage.zz91.com/feijinshu/",
+        "废橡胶": "https://jiage.zz91.com/feixiangjiao/",
+        "废玻璃": "https://jiage.zz91.com/feiboli/",
+    }
+    
+    url = category_urls.get(category_desc, f"https://jiage.zz91.com/{category_desc}/")
+    all_results = []
+    session = build_session()
+    
+    try:
+        resp = session.get(url, timeout=20)
+        if resp.status_code != 200:
+            return {
+                "website_name": site_name,
+                "status": "failed",
+                "items_scraped": 0,
+                "error_msg": f"HTTP {resp.status_code}",
+                "http_status": resp.status_code,
+                "crawled_at": datetime.now(timezone.utc).isoformat(),
+            }
+        
+        soup = BeautifulSoup(resp.text, "lxml")
+        
+        # ZZ91价格列表选择器（支持多种页面结构）
+        price_rows = soup.select(".price-list li, .market-list .item, .jiage-item, table tr")
+        
+        for row in price_rows:
+            try:
+                text = row.get_text(strip=True)
+                if not text or len(text) < 3:
+                    continue
+                
+                name_match = re.search(r"^[^\d]+(?=\d)", text)
+                price_match = re.search(r"\d{2,6}(?:\.\d+)?", text)
+                
+                if not name_match or not price_match:
+                    continue
+                
+                name = name_match.group(0).strip()
+                price = float(price_match.group(0))
+                
+                if price <= 0 or price > 500000:
+                    continue
+                
+                cat_id = match_category(name)
+                if not cat_id:
+                    continue
+                
+                all_results.append({
+                    "category_id": cat_id,
+                    "category_name": CATEGORY_NAMES.get(cat_id, name),
+                    "name": name,
+                    "buy_price": round(price * 0.97),
+                    "sell_price": round(price * 1.01),
+                    "raw_price": price,
+                    "change": 0.0,
+                    "source_detail": "ZZ91再生网",
+                    "date_text": "",
+                })
+            except Exception:
+                continue
+        
+        if all_results:
+            print(f"     ✅ {len(all_results)} 条匹配")
+        else:
+            print(f"     ⚠️  无匹配数据（{len(price_rows)}行无匹配品类）")
+        
+    except Exception as e:
+        print(f"     ❌ {e}")
+    
+    return {
+        "website_name": site_name,
+        "status": "success" if all_results else "failed",
+        "items_scraped": len(all_results),
+        "error_msg": "" if all_results else f"ZZ91 {category_desc}: JS渲染页面，请使用Puppeteer方案",
+        "http_status": 200,
+        "results": all_results if all_results else [],
+        "crawled_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 def crawl_site(config: dict) -> dict:
     """爬取单个站点"""
     site_name = config.get("name", config.get("website_name", "未知站点"))
@@ -982,6 +1309,10 @@ def main():
             site_type = site.get("type", "html")
             if site_type == "jintou_api":
                 log = crawl_jintou_api(site)
+            elif site_type == "100ppi_html":
+                log = crawl_100ppi(site)
+            elif site_type == "zz91_api":
+                log = crawl_zz91(site)
             else:
                 log = crawl_site(site)
             all_logs.append(log)
@@ -1020,6 +1351,26 @@ def main():
         for sp in sim_prices:
             if sp["category_id"] in missing_categories:
                 prices.append(sp)
+
+    # ===== 应用四川绵阳地区价格系数 =====
+    region_code = os.environ.get("SCRAP_REGION", "sc_my")  # 默认绵阳
+    # 命令行参数可覆盖: python scraper.py --region=sc_cd
+    for arg in sys.argv:
+        if arg.startswith("--region="):
+            region_code = arg.split("=", 1)[1]
+        elif arg == "--mianyang" or arg == "-my":
+            region_code = "sc_my"
+        elif arg == "--chengdu" or arg == "-cd":
+            region_code = "sc_cd"
+        elif arg == "--national" or arg == "-n":
+            region_code = None  # 全国均价，不应用系数
+    
+    if region_code:
+        region_factors = load_region_factors()
+        if region_code in region_factors:
+            region_name = region_factors[region_code].get("name", region_code)
+            print(f"   📍 应用地区价格系数: {region_name} ({region_code})")
+            prices = apply_region_factors(prices, region_code)
 
     # 统计来源
     n_real = len([p for p in prices if "推导" not in str(p.get("sources","")) and "模拟" not in str(p.get("sources",""))])
