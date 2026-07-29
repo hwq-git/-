@@ -429,8 +429,8 @@ const App = (() => {
     el.innerHTML = html;
   }
 
-  // ✅ 增强：爬虫状态展示，新增错误详情面板
-  // 数据状态展示（简化版）
+  // ✅ 增强：爬虫状态展示，新增数据来源面板
+  // 数据状态展示
   async function renderCrawlerStatus() {
     const el = document.getElementById('crawler-status-detail');
     if (!el) return;
@@ -450,6 +450,48 @@ const App = (() => {
     const userCount = allPrices.filter(p => p.source === 'user').length;
     const realCount = allPrices.filter(p => p.source === 'crawler').length;
     const simCount = allPrices.filter(p => p.source === 'simulated' || p.source === 'seed').length;
+
+    // 统计实际数据来源
+    const sourceDetails = {};
+    allPrices.filter(p => p.source === 'crawler').forEach(p => {
+      const src = p.source_detail || '未知来源';
+      sourceDetails[src] = (sourceDetails[src] || 0) + 1;
+    });
+
+    // 统计远程JSON数据来源
+    let remoteSources = [];
+    try {
+      const resp = await fetch('./data/scraped-prices.json', { cache: 'no-store' });
+      if (resp.ok) {
+        const remote = await resp.json();
+        // 统计每个品类来源
+        const sourceSet = new Set();
+        (remote.prices || []).forEach(p => {
+          (p.sources || []).forEach(s => sourceSet.add(s));
+        });
+        remoteSources = Array.from(sourceSet);
+      }
+    } catch (e) { /* 忽略 */ }
+
+    let sourceDetailHtml = '';
+    if (remoteSources.length > 0) {
+      sourceDetailHtml = `
+        <div class="crawler-status-item" style="flex-direction:column;align-items:flex-start;">
+          <span class="label" style="margin-bottom:6px;">📡 数据来源</span>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;">
+            ${remoteSources.map(s => {
+              let cls = 'simulated';
+              if (s.includes('金投网')) cls = 'crawler';
+              else if (s.includes('生意社')) cls = 'crawler';
+              else if (s.includes('ZZ91')) cls = 'crawler';
+              else if (s.includes('绵阳') || s.includes('成都') || s.includes('修正')) cls = '';
+              else if (s.includes('推导')) cls = '';
+              return `<span class="source-tag ${cls}" style="font-size:12px;">${s}</span>`;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
 
     el.innerHTML = `
       <div class="crawler-status-item">
@@ -472,6 +514,7 @@ const App = (() => {
         <span class="label">📊 模拟行情</span>
         <span class="value" style="color:#ef6c00;">${simCount} 条</span>
       </div>
+      ${sourceDetailHtml}
     `;
   }
 
