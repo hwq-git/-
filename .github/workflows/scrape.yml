@@ -1,6 +1,8 @@
 name: 废品价格爬虫（手动备用）
 
-# 定时任务已禁用，改用本地 update-prices.bat 推送数据。手动触发可留作备用。
+# 定时任务已禁用，改用本地 update-prices.bat 推送数据。
+# 手动触发可留作备用（GitHub Pages 数据源会自动更新）。
+# 注意：Gitee 同步需要 GITEE_TOKEN 密钥，未配置时该步骤会跳过。
 on:
   workflow_dispatch:  # 仅保留手动触发
 
@@ -15,6 +17,8 @@ jobs:
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
+        with:
+          ref: master  # 明确检出 master 分支（非 detached HEAD）
 
       - name: 设置 Python
         uses: actions/setup-python@v5
@@ -48,11 +52,12 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/scraped-prices.json
           git diff --staged --quiet || git commit -m "📊 更新废品价格数据 ($(date +%Y-%m-%d)) [skip ci]"
-          git pull --rebase origin main
-          git push
+          git pull --rebase origin master
+          git push origin master
 
       - name: 同步到 Gitee
         if: steps.check_output.outputs.categories != '0'
+        continue-on-error: true  # Gitee 同步失败不影响整体流程
         run: |
-          git remote add gitee https://hou-wanqiang:${{ secrets.GITEE_TOKEN }}@gitee.com/hou-wanqiang/feipin-price.git
-          git push gitee main:master -f
+          git remote add gitee https://hou-wanqiang:${{ secrets.GITEE_TOKEN }}@gitee.com/hou-wanqiang/feipin-price.git || true
+          git push gitee master:master -f
