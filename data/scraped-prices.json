@@ -1,9 +1,9 @@
 {
   "version": "3.0.0",
-  "scraped_at": "2026-09-23T13:41:38.309247+00:00",
+  "scraped_at": "2026-09-24T04:23:19.487937+00:00",
   "total_categories": 30,
-  "total_raw": 2100,
-  "success_sites": 3,
+  "total_raw": 1981,
+  "success_sites": 1,
   "total_sites": 10,
   "data_source": "真实22+推导3+模拟5",
   "prices": [
@@ -18,79 +18,77 @@
         "金投网",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308653+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487540+00:00",
       "region": "四川绵阳"
     },
     {
       "category_id": "metal_aluminum",
       "name": "废铝",
-      "buy_price": 2280,
-      "sell_price": 2374,
-      "raw_avg_price": 2326,
-      "sample_count": 360,
+      "buy_price": 1961,
+      "sell_price": 2042,
+      "raw_avg_price": 2021,
+      "sample_count": 318,
       "sources": [
         "金投网",
-        "生意社",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308332+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487481+00:00",
       "region": "四川绵阳"
     },
     {
       "category_id": "metal_copper",
       "name": "废铜",
-      "buy_price": 79429,
-      "sell_price": 82705,
-      "raw_avg_price": 81770,
-      "sample_count": 294,
+      "buy_price": 78212,
+      "sell_price": 81437,
+      "raw_avg_price": 80631,
+      "sample_count": 259,
       "sources": [
         "金投网",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308398+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487426+00:00",
       "region": "四川绵阳"
     },
     {
       "category_id": "metal_iron",
       "name": "废铁",
-      "buy_price": 1750,
-      "sell_price": 1823,
-      "raw_avg_price": 1805,
-      "sample_count": 730,
+      "buy_price": 1760,
+      "sell_price": 1832,
+      "raw_avg_price": 1814,
+      "sample_count": 722,
       "sources": [
         "金投网",
-        "生意社",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308541+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487391+00:00",
       "region": "四川绵阳"
     },
     {
       "category_id": "metal_lead",
       "name": "废铅",
-      "buy_price": 13773,
-      "sell_price": 14341,
-      "raw_avg_price": 14199,
+      "buy_price": 13704,
+      "sell_price": 14269,
+      "raw_avg_price": 14128,
       "sample_count": 48,
       "sources": [
         "金投网",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308553+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487441+00:00",
       "region": "四川绵阳"
     },
     {
       "category_id": "metal_steel",
       "name": "不锈钢",
-      "buy_price": 9438,
-      "sell_price": 9827,
-      "raw_avg_price": 9729,
+      "buy_price": 9392,
+      "sell_price": 9779,
+      "raw_avg_price": 9682,
       "sample_count": 65,
       "sources": [
         "金投网",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308572+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487489+00:00",
       "region": "四川绵阳"
     },
     {
@@ -104,21 +102,21 @@
         "金投网",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308560+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487446+00:00",
       "region": "四川绵阳"
     },
     {
       "category_id": "metal_zinc",
       "name": "废锌",
-      "buy_price": 22595,
-      "sell_price": 23526,
-      "raw_avg_price": 23251,
-      "sample_count": 90,
+      "buy_price": 22932,
+      "sell_price": 23878,
+      "raw_avg_price": 23608,
+      "sample_count": 66,
       "sources": [
         "金投网",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308264+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487435+00:00",
       "region": "四川绵阳"
     },
     {
@@ -132,7 +130,7 @@
         "金投网",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308650+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487538+00:00",
       "region": "四川绵阳"
     },
     {
@@ -146,7 +144,7 @@
         "金投网",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308665+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487549+00:00",
       "region": "四川绵阳"
     },
     {
@@ -160,7 +158,7 @@
         "金投网",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308669+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487550+00:00",
       "region": "四川绵阳"
     },
     {
@@ -174,7 +172,7 @@
         "金投网",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308672+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487552+00:00",
       "region": "四川绵阳"
     },
     {
@@ -188,7 +186,7 @@
         "金投网",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308674+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487554+00:00",
       "region": "四川绵阳"
     },
     {
@@ -202,7 +200,7 @@
         "金投网",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308597+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487505+00:00",
       "region": "四川绵阳"
     },
     {
@@ -216,7 +214,7 @@
         "金投网",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308637+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487529+00:00",
       "region": "四川绵阳"
     },
     {
@@ -230,7 +228,7 @@
         "金投网",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308606+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487511+00:00",
       "region": "四川绵阳"
     },
     {
@@ -244,22 +242,21 @@
         "金投网",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308643+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487533+00:00",
       "region": "四川绵阳"
     },
     {
       "category_id": "plastic_pp",
       "name": "PP编织袋",
-      "buy_price": 7998,
-      "sell_price": 8327,
-      "raw_avg_price": 8245,
-      "sample_count": 135,
+      "buy_price": 8092,
+      "sell_price": 8425,
+      "raw_avg_price": 8342,
+      "sample_count": 125,
       "sources": [
         "金投网",
-        "生意社",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308630+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487526+00:00",
       "region": "四川绵阳"
     },
     {
@@ -273,7 +270,7 @@
         "金投网",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308576+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487491+00:00",
       "region": "四川绵阳"
     },
     {
@@ -287,7 +284,7 @@
         "金投网",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308648+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487536+00:00",
       "region": "四川绵阳"
     },
     {
@@ -301,7 +298,7 @@
         "金投网",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308662+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487547+00:00",
       "region": "四川绵阳"
     },
     {
@@ -315,7 +312,7 @@
         "金投网",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308659+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487544+00:00",
       "region": "四川绵阳"
     },
     {
@@ -329,7 +326,7 @@
         "由书纸价格推导（参考）",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308706+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487574+00:00",
       "region": "四川绵阳"
     },
     {
@@ -343,7 +340,7 @@
         "由混合废纸价格推导（参考）",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308709+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487577+00:00",
       "region": "四川绵阳"
     },
     {
@@ -357,21 +354,21 @@
         "由平板玻璃价格推导（参考）",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308712+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487579+00:00",
       "region": "四川绵阳"
     },
     {
       "category_id": "appliance_ac",
       "name": "废空调",
-      "buy_price": 110,
-      "sell_price": 170,
-      "raw_avg_price": 140,
+      "buy_price": 111,
+      "sell_price": 182,
+      "raw_avg_price": 147,
       "sample_count": 1,
       "sources": [
         "行情参考价（模拟）",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308873+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487684+00:00",
       "region": "四川绵阳"
     },
     {
@@ -385,49 +382,49 @@
         "行情参考价（模拟）",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308867+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487680+00:00",
       "region": "四川绵阳"
     },
     {
       "category_id": "appliance_phone",
       "name": "废手机",
-      "buy_price": 14,
-      "sell_price": 73,
+      "buy_price": 15,
+      "sell_price": 71,
       "raw_avg_price": 43,
       "sample_count": 1,
       "sources": [
         "行情参考价（模拟）",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308880+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487688+00:00",
       "region": "四川绵阳"
     },
     {
       "category_id": "appliance_tv",
       "name": "废电视",
-      "buy_price": 47,
-      "sell_price": 104,
-      "raw_avg_price": 75,
+      "buy_price": 49,
+      "sell_price": 99,
+      "raw_avg_price": 74,
       "sample_count": 1,
       "sources": [
         "行情参考价（模拟）",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308877+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487686+00:00",
       "region": "四川绵阳"
     },
     {
       "category_id": "appliance_washer",
       "name": "废洗衣机",
       "buy_price": 57,
-      "sell_price": 114,
-      "raw_avg_price": 86,
+      "sell_price": 117,
+      "raw_avg_price": 87,
       "sample_count": 1,
       "sources": [
         "行情参考价（模拟）",
         "四川绵阳地区修正"
       ],
-      "scraped_at": "2026-09-23T13:41:38.308870+00:00",
+      "scraped_at": "2026-09-24T04:23:19.487682+00:00",
       "region": "四川绵阳"
     }
   ],
@@ -435,7 +432,7 @@
     {
       "website_name": "金投网-废品行情",
       "status": "success",
-      "items_scraped": 2064,
+      "items_scraped": 1981,
       "error_msg": ""
     },
     {
@@ -458,33 +455,33 @@
     },
     {
       "website_name": "生意社-橡胶行情",
-      "status": "success",
-      "items_scraped": 18,
-      "error_msg": ""
+      "status": "failed",
+      "items_scraped": 0,
+      "error_msg": "生意社废橡胶: 无匹配数据"
     },
     {
       "website_name": "生意社-玻璃行情",
-      "status": "success",
-      "items_scraped": 18,
-      "error_msg": ""
+      "status": "failed",
+      "items_scraped": 0,
+      "error_msg": "生意社废玻璃: 无匹配数据"
     },
     {
       "website_name": "ZZ91再生网-废纸行情",
       "status": "failed",
       "items_scraped": 0,
-      "error_msg": "ZZ91 废纸: JS渲染页面，请使用Puppeteer方案"
+      "error_msg": "HTTP 501"
     },
     {
       "website_name": "ZZ91再生网-废塑料行情",
       "status": "failed",
       "items_scraped": 0,
-      "error_msg": "ZZ91 废塑料: JS渲染页面，请使用Puppeteer方案"
+      "error_msg": "HTTP 501"
     },
     {
       "website_name": "ZZ91再生网-废金属行情",
       "status": "failed",
       "items_scraped": 0,
-      "error_msg": "ZZ91 废金属: JS渲染页面，请使用Puppeteer方案"
+      "error_msg": "HTTP 501"
     },
     {
       "website_name": "废品之家-废纸价格",
